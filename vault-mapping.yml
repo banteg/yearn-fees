@@ -1,0 +1,14 @@
+0.3.0:
+  - pc: 15660
+    stack:
+      1: management_fee
+      2: governance_fee
+      3: performance_fee
+      3: strategist_fee
+0.3.1:
+  - pc: 15691
+    stack:
+      1: management_fee
+      2: governance_fee
+      3: performance_fee
+      3: strategist_fee
