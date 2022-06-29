@@ -12,3 +12,10 @@
       2: governance_fee
       3: performance_fee
       3: strategist_fee
+0.3.2:
+  - pc: 17257
+    stack:
+      1: management_fee
+      2: performance_fee
+      2: strategist_fee
+      3: governance_fee

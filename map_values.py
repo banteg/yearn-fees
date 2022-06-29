@@ -18,12 +18,12 @@ def assess_fees(vault, strategy, event, duration, version):
     vault = Contract(vault)
     strategy = Contract(strategy)
 
-    if version in ["0.3.0", "0.3.1"]:
+    if version in ["0.3.0", "0.3.1", "0.3.2"]:
         pre_height = height = event["block_number"] - 1
         gain = event["event_arguments"]["gain"]
         if version == "0.3.0":
             total_assets = vault.totalAssets(height=pre_height)
-        elif version == "0.3.1":
+        elif version in ["0.3.1", "0.3.2"]:
             total_assets = vault.totalDebt(height=pre_height)
         # fee bps
         management_fee_bps = vault.managementFee(height=pre_height)
