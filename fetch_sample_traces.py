@@ -34,38 +34,45 @@ def main():
         for version in vaults:
             if Version(version) < Version("0.3.0"):
                 continue
-            vault = Contract(random.choice(vaults[version]).vault)
-            logs = vault.StrategyReported.range(12_000_000, chain.blocks.height, 1_000_000)
-            for log in logs:
-                if log.gain == 0:
-                    continue
-                print(version, log.transaction_hash.hex())
-                trace = chain.provider._make_request(
-                    "debug_traceTransaction", [log.transaction_hash.hex()]
-                )
-                frames = [
-                    frame
-                    for frame in trace["structLogs"]
-                    if str(frame["pc"]) in program_counters[f"v{version}"]
-                    # and frame["op"] == "JUMP"  # more likely to be the end of a method
-                ]
-                for frame in frames:
-                    frame["stack_int"] = [int(item, 16) for item in frame["stack"]]
-                    frame["memory_int"] = [int(f"0x{item}", 16) for item in frame["memory"]]
-                # specifying height is an aspirational api, it requires patching ape
-                a = vault.strategies(log.strategy, height=log.block_number - 1)
-                b = vault.strategies(log.strategy, height=log.block_number)
-                output = {
-                    "frames": frames,
-                    "event": asdict(log),
-                    "strategy": b.__dict__,
-                    "vault": vault.address,
-                    "version": version,
-                    "duration": b.lastReport - a.lastReport,
-                }
-                path = Path("traces") / f"v{version}_{log.transaction_hash.hex()}.json"
-                path.write_text(json.dumps(output, default=json_encoder, indent=2))
-                break
+            random.shuffle(vaults[version])
+            found = False
+            for item in vaults[version]:
+                if found:
+                    break
+                vault = Contract(item.vault)
+                logs = vault.StrategyReported.range(12_000_000, chain.blocks.height, 1_000_000)
+
+                for log in logs:
+                    if log.gain == 0:
+                        continue
+                    print(version, log.transaction_hash.hex())
+                    trace = chain.provider._make_request(
+                        "debug_traceTransaction", [log.transaction_hash.hex()]
+                    )
+                    frames = [
+                        frame
+                        for frame in trace["structLogs"]
+                        if str(frame["pc"]) in program_counters[f"v{version}"]
+                        # and frame["op"] == "JUMP"  # more likely to be the end of a method
+                    ]
+                    for frame in frames:
+                        frame["stack_int"] = [int(item, 16) for item in frame["stack"]]
+                        frame["memory_int"] = [int(f"0x{item}", 16) for item in frame["memory"]]
+                    # specifying height is an aspirational api, it requires patching ape
+                    a = vault.strategies(log.strategy, height=log.block_number - 1)
+                    b = vault.strategies(log.strategy, height=log.block_number)
+                    output = {
+                        "frames": frames,
+                        "event": asdict(log),
+                        "strategy": b.__dict__,
+                        "vault": vault.address,
+                        "version": version,
+                        "duration": b.lastReport - a.lastReport,
+                    }
+                    path = Path("traces") / f"v{version}_{log.transaction_hash.hex()}.json"
+                    path.write_text(json.dumps(output, default=json_encoder, indent=2))
+                    found = True
+                    break
 
 
 if __name__ == "__main__":
