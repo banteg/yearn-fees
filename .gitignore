@@ -1,6 +1,6 @@
-traces
 yearn-vaults
 metadata/*.json
 sources/*.vy
+traces/*.json
 .build
 build
