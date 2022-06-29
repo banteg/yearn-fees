@@ -12,7 +12,7 @@ from toolz import groupby, valmap
 
 
 def json_encoder(value):
-    if isinstance(value, HexBytes):
+    if isinstance(value, bytes):
         return value.hex()
 
 
