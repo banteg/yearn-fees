@@ -35,9 +35,7 @@ def main():
 
         pcs_by_version[api_version] = found_pcs
 
-    Path("metadata/pcs_by_version.json").write_text(
-        json.dumps(pcs_by_version, indent=2)
-    )
+    Path("metadata/pcs_by_version.json").write_text(json.dumps(pcs_by_version, indent=2))
 
 
 if __name__ == "__main__":
