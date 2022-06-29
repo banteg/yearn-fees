@@ -20,9 +20,7 @@ def get_repo():
         repo = Repo("yearn-vaults")
     except NoSuchPathError:
         console.log("clone repo")
-        repo = Repo.clone_from(
-            "https://github.com/yearn/yearn-vaults.git", "yearn-vaults"
-        )
+        repo = Repo.clone_from("https://github.com/yearn/yearn-vaults.git", "yearn-vaults")
 
     return repo
 
@@ -70,9 +68,7 @@ def main():
 
             # compile the contracts
             source_file = Path(repo.working_dir) / "contracts" / "Vault.vy"
-            compiler_output = compile_contract(
-                vyper_version, source_file, ["source_map", "ast"]
-            )
+            compiler_output = compile_contract(vyper_version, source_file, ["source_map", "ast"])
 
             # write metadata
             source_copy = Path("sources") / f"Vault_{tag}.vy"
