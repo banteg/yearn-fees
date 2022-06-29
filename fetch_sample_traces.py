@@ -47,7 +47,7 @@ def main():
                     frame
                     for frame in trace["structLogs"]
                     if str(frame["pc"]) in program_counters[f"v{version}"]
-                    #and frame["op"] == "JUMP"  # more likely to be the end of a method
+                    # and frame["op"] == "JUMP"  # more likely to be the end of a method
                 ]
                 for frame in frames:
                     frame["stack_int"] = [int(item, 16) for item in frame["stack"]]
@@ -59,6 +59,8 @@ def main():
                     "frames": frames,
                     "event": asdict(log),
                     "strategy": b.__dict__,
+                    "vault": vault.address,
+                    "version": version,
                     "duration": b.lastReport - a.lastReport,
                 }
                 path = Path("traces") / f"v{version}_{log.transaction_hash.hex()}.json"
