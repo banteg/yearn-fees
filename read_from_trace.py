@@ -30,6 +30,7 @@ stack_map = {
 }
 
 fees = {name: int(frame["stack"][pos], 16) for name, pos in stack_map.items()}
+fees['actual_management_fee'] = fees['total_fee'] - fees['strategist_fee'] - fees['performance_fee']
 
 # print("stack")
 # for i, item in enumerate(frame["stack"]):
