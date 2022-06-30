@@ -26,3 +26,35 @@
       13: management_fee
       14: performance_fee # ?
       14: strategist_fee # ?
+# 0.3.4
+0.3.5:
+  - pc: 20919
+    memory:
+      11: gain
+      14: management_fee
+      15: performance_fee # ?
+      15: strategist_fee # ?
+      16: performance_fee # ?
+      16: strategist_fee # ?
+# 0.4.0
+# 0.4.1
+0.4.2:
+  - pc: 20805
+    memory:
+      11: gain
+      13: duration
+      14: management_fee # ?
+      15: performance_fee # ?
+      15: strategist_fee # ?
+      16: performance_fee # ?
+      16: strategist_fee # ?
+0.4.3:
+  - pc: 20675
+    memory:
+      11: gain
+      13: duration
+      14: management_fee
+      15: performance_fee # ?
+      15: strategist_fee # ?
+      16: performance_fee # ?
+      16: strategist_fee # ?
