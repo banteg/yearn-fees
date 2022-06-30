@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 import sys
 import json
 from ape import chain, networks, Contract
@@ -16,19 +16,32 @@ def cli():
 
 
 def assess_fees(vault, strategy, event, duration, version):
-    SECS_PER_YEAR = 31_557_600
     if Version(version) >= Version("0.3.3"):
         SECS_PER_YEAR = 31_556_952
+    else:
+        SECS_PER_YEAR = 31_557_600
 
     vault = Contract(vault)
     strategy = Contract(strategy)
 
-    if Version("0.3.0") <= Version(version) <= Version("0.3.3"):
+    if Version(version) >= Version("0.3.0"):
         pre_height = height = event["block_number"] - 1
         gain = event["event_arguments"]["gain"]
-        total_assets = vault.totalAssets(height=pre_height)
-        if Version(version) >= Version("0.3.1"):
+        if Version(version) >= Version("0.3.5"):
+            total_debt = vault.strategies(strategy, height=pre_height).totalDebt
+            delegated_assets = strategy.delegatedAssets(height=pre_height)
+            total_assets = total_debt - delegated_assets
+        elif Version(version) >= Version("0.3.4"):
+            total_debt = vault.totalDebt(height=pre_height)
+            delegated_assets = vault.delegatedAssets(height=pre_height)
+            total_assets = total_debt - delegated_assets
+        elif Version(version) >= Version("0.3.1"):
             total_assets = vault.totalDebt(height=pre_height)
+        elif Version(version) >= Version("0.3.0"):
+            total_assets = vault.totalAssets(height=pre_height)
+        else:
+            raise ValueError("invalid version %s", version)
+
         # fee bps
         management_fee_bps = vault.managementFee(height=pre_height)
         performance_fee_bps = vault.performanceFee(height=pre_height)
@@ -36,9 +49,6 @@ def assess_fees(vault, strategy, event, duration, version):
         print(f"{management_fee_bps=}")
         print(f"{performance_fee_bps=}")
         print(f"{strategist_fee_bps=}")
-        # assert management_fee_bps != 0, "bad sample"
-        # assert performance_fee_bps != 0, "bad sample"
-        # assert strategist_fee_bps != 0, "bad sample"
 
         management_fee = total_assets * duration * management_fee_bps // MAX_BPS // SECS_PER_YEAR
         strategist_fee = 0
@@ -48,6 +58,11 @@ def assess_fees(vault, strategy, event, duration, version):
             performance_fee += gain * performance_fee_bps // MAX_BPS
 
         total_fee = management_fee + performance_fee + strategist_fee
+        if Version(version) >= Version("0.3.5"):
+            if total_fee > gain:
+                total_fee = gain
+                management_fee = gain - performance_fee - strategist_fee
+
         return {
             "management_fee": management_fee,
             "performance_fee": performance_fee,
@@ -74,6 +89,7 @@ def count_values(frame, fees):
 
 def display_frame(frame, fees):
     print(f'[bold red]{frame["pc"]}[/]')
+    values_found = defaultdict(set)
     for location in ["stack", "memory"]:
         values_present = [value for value in fees.values() if value in frame[f"{location}_int"]]
         if values_present:
@@ -81,6 +97,8 @@ def display_frame(frame, fees):
             for i, item in enumerate(frame[f"{location}_int"]):
                 match = [name for name, value in fees.items() if item == value and value != 0]
                 print(f"  {i:2} {item}", ", ".join(match))
+                for name in match:
+                    values_found[name].add(frame["pc"])
 
             print(f"    {location}:")
             for i, item in enumerate(frame[f"{location}_int"]):
@@ -88,31 +106,42 @@ def display_frame(frame, fees):
                 for m in match:
                     print(f"      {i}: {m}")
 
+    return values_found
+
 
 def map_trace(data):
     strategy = data["event"]["event_arguments"]["strategy"]
     fees = assess_fees(data["vault"], strategy, data["event"], data["duration"], data["version"])
     frames = sorted(data["frames"], key=lambda frame: count_values(frame, fees), reverse=True)
     pcs = Counter()
+    finds = defaultdict(set)
     for frame in frames[:3]:
-        display_frame(frame, fees)
+        found = display_frame(frame, fees)
+        for name in found:
+            finds[name] |= found[name]
         pcs[frame["pc"]] += 1
 
-    return pcs
+    return pcs, finds
 
 
 @cli.command("version")
 @click.argument("version")
 def map_version(version):
     pcs = Counter()
+    finds = defaultdict(set)
     for path in Path(f"traces").glob(f"v{version}_*.json"):
         try:
-            pcs += map_trace(json.loads(path.read_text()))
+            pc, found = map_trace(json.loads(path.read_text()))
+            pcs += pc
+            for name in found:
+                finds[name] |= found[name]
         except AssertionError as e:
             print(e)
     print(f"[bold green]most common[/]")
     for a, b in pcs.most_common():
         print(a, b)
+    for a, b in finds.items():
+        print(f"[bold green]{a}[/]", b)
 
 
 @cli.command("file")
