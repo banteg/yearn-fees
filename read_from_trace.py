@@ -8,6 +8,7 @@ from ape import Contract, chain, convert, networks
 from ape.types import AddressType
 from hexbytes import HexBytes
 from rich import print
+from assess_fees import assess_fees
 
 
 @click.group()
@@ -15,19 +16,20 @@ def cli():
     pass
 
 
-def map_trace(trace, version):
+def map_trace(trace, version, scale=1):
     mapping = yaml.safe_load(open("vault-mapping.yml"))
     values = {}
-    print(mapping[version])
 
     for item in mapping[version]:
         frame = next(f for f in trace if f["pc"] == item["pc"])
-        print(frame)
         for loc in ["stack", "memory"]:
             for key, pos in item.get(loc, {}).items():
                 values[key] = int.from_bytes(HexBytes(frame[loc][pos]), "big")
-            print(loc)
-            print({i: int.from_bytes(HexBytes(v), "big") for i, v in enumerate(frame[loc])})
+
+    for key in values:
+        if key not in ["duration"]:
+            values[key] = Decimal(values[key]) / scale
+
     return values
 
 
@@ -52,8 +54,8 @@ def get_vaults():
 @click.argument("tx")
 @click.option("--vault")
 def read_from_tx(tx, vault=None):
+    receipt = chain.provider.get_transaction(tx)
     if vault is None:
-        receipt = chain.provider.get_transaction(tx)
         receipt_addresses = {log["address"] for log in receipt.logs}
         vaults = get_vaults()
         vault = next(log for log in vaults if log.vault in receipt_addresses)
@@ -62,13 +64,14 @@ def read_from_tx(tx, vault=None):
         vault = Contract(vault)
     version = vault.apiVersion()
     scale = 10 ** vault.decimals()
+    report = next(vault.StrategyReported.from_receipt(receipt))
     trace = chain.provider._make_request("debug_traceTransaction", [tx])
-    fees = map_trace(trace["structLogs"], version)
-    for item in fees:
-        if item in ["duration"]:
-            continue
-        fees[item] = Decimal(fees[item]) / scale
-    print(fees)
+
+    fees_calc = assess_fees(vault, report)
+    print("calculated", fees_calc)
+
+    trace_fees = map_trace(trace["structLogs"], version, scale)
+    print("traced", trace_fees)
 
 
 if __name__ == "__main__":
