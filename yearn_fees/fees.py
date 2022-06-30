@@ -5,7 +5,7 @@ from semantic_version import Version
 from yearn_fees.types import Fees
 
 
-def assess_fees(vault: ContractInstance, report: ContractLog):
+def assess_fees(vault: ContractInstance, report: ContractLog) -> Fees:
     """
     A reimplementation of Vault._assessFees which supports all api versions.
     """

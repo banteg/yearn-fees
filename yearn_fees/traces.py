@@ -16,7 +16,7 @@ class TraceMapping(BaseModel):
 
 
 def get_mapping(version):
-    mappings = yaml.safe_load(open("vault-mapping.yaml"))
+    mappings = yaml.safe_load(open("vault-mapping.yml"))
     if version not in mappings:
         raise ValueError("unsupported version", version)
 
@@ -24,6 +24,9 @@ def get_mapping(version):
 
 
 def read_from_trace(trace: List[TraceFrame], mapping: List[TraceMapping]):
+    """
+    Recover data from trace frames using trace mappings.
+    """
     data = {}
     for source in mapping:
         frame = next(frame for frame in trace if frame.pc == source.pc)
@@ -36,6 +39,9 @@ def read_from_trace(trace: List[TraceFrame], mapping: List[TraceMapping]):
 
 
 def fees_from_trace(trace: Iterator[TraceFrame], version: str):
+    """
+    Recover fee data from trace frames.
+    """
     mapping = get_mapping(version)
     data = read_from_trace(trace, mapping)
     fees = Fees(**data)
