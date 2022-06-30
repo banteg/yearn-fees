@@ -1,58 +1,58 @@
 0.3.0:
   - pc: 15660
     memory:
-      11: gain
-      13: management_fee
-      14: performance_fee # ?
-      14: strategist_fee # ?
+      gain: 11
+      management_fee: 13
+      performance_fee: 14 # ?
+      strategist_fee: 14 # ?
 0.3.1:
   - pc: 15690
     memory:
-      11: gain
-      13: management_fee
-      14: performance_fee # ?
-      14: strategist_fee # ?
+      gain: 11
+      management_fee: 13
+      performance_fee: 14 # ?
+      strategist_fee: 14 # ?
 0.3.2:
   - pc: 17243
     memory:
-      11: gain
-      13: management_fee
-      14: performance_fee # ?
-      14: strategist_fee # ?
+      gain: 11
+      management_fee: 13
+      performance_fee: 14 # ?
+      strategist_fee: 14 # ?
 0.3.3:
   - pc: 19825
     memory:
-      11: gain
-      13: management_fee
-      14: performance_fee # ?
-      14: strategist_fee # ?
+      gain: 11
+      management_fee: 13
+      performance_fee: 14 # ?
+      strategist_fee: 14 # ?
 # 0.3.4
 0.3.5:
   - pc: 20919
     memory:
-      11: gain
-      14: management_fee
-      15: performance_fee # ?
-      15: strategist_fee # ?
-      16: performance_fee # ?
-      16: strategist_fee # ?
+      gain: 11
+      management_fee: 14
+      performance_fee: 15 # ?
+      strategist_fee: 15 # ?
+      performance_fee: 16 # ?
+      strategist_fee: 16 # ?
 # 0.4.0
 # 0.4.1
 0.4.2:
   - pc: 20805
     memory:
-      11: gain
-      13: duration
-      14: management_fee # ?
-      15: performance_fee # ?
-      15: strategist_fee # ?
-      16: performance_fee # ?
-      16: strategist_fee # ?
+      gain: 11
+      duration: 13
+      management_fee: 14 # ?
+      performance_fee: 15 # ?
+      strategist_fee: 15 # ?
+      performance_fee: 16 # ?
+      strategist_fee: 16 # ?
 0.4.3:
   - pc: 20675
     memory:
-      11: gain
-      13: duration
-      14: management_fee
-      15: strategist_fee
-      16: performance_fee
+      gain: 11
+      duration: 13
+      management_fee: 14
+      strategist_fee: 15
+      performance_fee: 16

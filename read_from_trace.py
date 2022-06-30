@@ -24,7 +24,7 @@ def map_trace(trace, version):
         frame = next(f for f in trace if f["pc"] == item["pc"])
         print(frame)
         for loc in ["stack", "memory"]:
-            for pos, key in item.get(loc, {}).items():
+            for key, pos in item.get(loc, {}).items():
                 values[key] = int.from_bytes(HexBytes(frame[loc][pos]), "big")
             print(loc)
             print({i: int.from_bytes(HexBytes(v), "big") for i, v in enumerate(frame[loc])})
