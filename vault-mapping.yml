@@ -54,7 +54,5 @@
       11: gain
       13: duration
       14: management_fee
-      15: performance_fee # ?
-      15: strategist_fee # ?
-      16: performance_fee # ?
-      16: strategist_fee # ?
+      15: strategist_fee
+      16: performance_fee
