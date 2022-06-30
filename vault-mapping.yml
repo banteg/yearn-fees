@@ -32,10 +32,8 @@
     memory:
       gain: 11
       management_fee: 14
-      performance_fee: 15 # ?
-      strategist_fee: 15 # ?
-      performance_fee: 16 # ?
-      strategist_fee: 16 # ?
+      strategist_fee: 15
+      performance_fee: 16
 # 0.4.0
 # 0.4.1
 0.4.2:
