@@ -1,39 +1,69 @@
 import json
-import sys
+from decimal import Decimal
+from pathlib import Path
+
+import click
+import yaml
+from ape import Contract, chain, convert, networks
+from ape.types import AddressType
+from hexbytes import HexBytes
 from rich import print
-from pydantic import BaseModel
-from os.path import exists
-
-path = sys.argv[1]
-
-if exists(path):
-    trace = json.load(open(path))["structLogs"]
-else:
-    from brownie import network, web3
-
-    network.connect("mainnet")
-    resp = web3.manager.request_blocking("debug_traceTransaction", [path])
-    trace = resp["structLogs"]
 
 
-pc = 21139  # 0.4.3
-frame = next(x for x in trace if x["pc"] == pc)
-# print(frame)
+@click.group()
+def cli():
+    pass
 
-stack_map = {
-    "gain": 3,
-    "duration": 5,
-    "management_fee": 6,
-    "strategist_fee": 7,
-    "performance_fee": 8,
-    "total_fee": 9,
-}
 
-fees = {name: int(frame["stack"][pos], 16) for name, pos in stack_map.items()}
-fees['actual_management_fee'] = fees['total_fee'] - fees['strategist_fee'] - fees['performance_fee']
+def map_trace(trace, version):
+    mapping = yaml.safe_load(open("vault-mapping.yml"))
+    values = {}
+    for item in mapping[version]:
+        frame = next(f for f in trace if f["pc"] == item["pc"])
+        for loc in ["storage", "memory"]:
+            for pos, key in item.get(loc, {}).items():
+                values[key] = int.from_bytes(HexBytes(frame[loc][pos]), "big")
+    return values
 
-# print("stack")
-# for i, item in enumerate(frame["stack"]):
-#     print(i, int(item, 16) if len(item) != 42 else item)
 
-print(fees)
+@cli.command("file")
+@click.argument("path")
+def read_from_file(path):
+    trace = json.load(open(path))["frames"]
+    version = Path(path).name.split("_")[0][1:]
+    fees = map_trace(trace, version)
+    print(fees)
+
+
+def get_vaults():
+    latest_registry = convert("v2.registry.ychad.eth", AddressType)
+    registry = Contract(latest_registry)
+
+    logs = registry.NewVault.range(12_000_000, chain.blocks.height, 1_000_000)
+    return [log for log in logs]
+
+
+@cli.command("tx")
+@click.argument("tx")
+def read_from_tx(tx):
+    receipt = chain.provider.get_transaction(tx)
+    receipt_addresses = {log["address"] for log in receipt.logs}
+    vaults = get_vaults()
+    vault = next(log for log in vaults if log.vault in receipt_addresses)
+    vault = Contract(vault.vault)
+    version = vault.apiVersion()
+    scale = 10 ** vault.decimals()
+    trace = chain.provider._make_request("debug_traceTransaction", [tx])
+    fees = map_trace(trace["structLogs"], version)
+    for item in fees:
+        if item in ["duration"]:
+            continue
+        fees[item] = Decimal(fees[item]) / scale
+    print(fees)
+
+
+if __name__ == "__main__":
+    with networks.ethereum.mainnet.use_default_provider():
+        chain.provider.web3.middleware_onion.remove("attrdict")
+        chain.provider.web3.provider._request_kwargs["timeout"] = 600
+        cli()
