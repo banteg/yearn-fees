@@ -41,11 +41,9 @@
     memory:
       gain: 11
       duration: 13
-      management_fee: 14 # ?
-      performance_fee: 15 # ?
-      strategist_fee: 15 # ?
-      performance_fee: 16 # ?
-      strategist_fee: 16 # ?
+      management_fee: 14
+      strategist_fee: 15
+      performance_fee: 16
 0.4.3:
   - pc: 20675
     memory:
