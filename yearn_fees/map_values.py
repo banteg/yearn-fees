@@ -1,16 +1,25 @@
-from collections import Counter, defaultdict
-import sys
-import json
-from ape import chain, networks, Contract
-from pathlib import Path
-from hexbytes import HexBytes
-from rich import print
-from semantic_version import Version
-import click
-from yearn_fees.assess_fees import assess_fees
-from yearn_fees.read_from_trace import get_vaults
+from collections import defaultdict
+from typing import Literal
 
-MAX_BPS = 10_000
+import click
+from ape import chain, networks
+from eth_utils import to_int
+from evm_trace import TraceFrame
+from pydantic import BaseModel
+from rich import print
+from rich.console import Console
+from rich.table import Table
+
+from yearn_fees.fees import assess_fees
+from yearn_fees.types import Fees
+from yearn_fees.vault_utils import get_endorsed_vaults, get_report_from_tx, get_trace
+
+
+class FoundMapping(BaseModel):
+    loc: Literal["stack", "memory"]
+    pc: int
+    pos: int
+    name: str
 
 
 @click.group()
@@ -18,119 +27,75 @@ def cli():
     pass
 
 
-def stack_to_ints(stack):
-    return [int.from_bytes(HexBytes(value), "big") for value in stack]
+def count_values(frame: TraceFrame, fees: Fees):
+    stack_memory = {to_int(item) for item in frame.stack + frame.memory}
+    return len(stack_memory & {value for _, value in fees})
 
 
-def count_values(frame, fees):
-    values_present = set()
-    for location in ["stack", "memory"]:
-        stack = stack_to_ints(frame[location])
-        values_present |= {value for value in fees.values() if value in stack}
-    return len(values_present)
+def display_frame(frame: TraceFrame, fees: Fees):
+    table = Table(title=f"pc={frame.pc}")
+    table.add_column("loc")
+    table.add_column("pos", justify="right")
+    table.add_column("value", justify="right")
+    table.add_column("name")
+    found = []
+
+    for loc in ["stack", "memory"]:
+        items = [to_int(item) for item in getattr(frame, loc)]
+        for pos, item in enumerate(items):
+            matches = [name for name, value in fees if value == item]
+            for name in matches:
+                found.append(FoundMapping(pc=frame.pc, loc=loc, pos=pos, name=name))
+            table.add_row(
+                loc,
+                str(pos),
+                str(item),
+                ", ".join(matches),
+            )
+
+    if found:
+        console.print(table)
+
+    return found
 
 
-def display_frame(frame, fees):
-    print(f'[bold red]{frame["pc"]}[/]')
-    values_found = defaultdict(set)
-    for location in ["stack", "memory"]:
-        stack = stack_to_ints(frame[location])
-        values_present = [value for value in fees.values() if value in stack]
-        if values_present:
-            print(f"[cyan]{location}[/]")
-            for i, item in enumerate(stack):
-                match = [name for name, value in fees.items() if item == value]
-                print(f"  {i:2} {item}", ", ".join(match))
-                for name in match:
-                    values_found[name].add(frame["pc"])
+def map_from_tx(tx, vault=None, max_frames=3):
+    vault, report = get_report_from_tx(tx, vault)
+    trace = get_trace(tx)
 
-            print(f"    {location}:")
-            for i, item in enumerate(stack):
-                match = [name for name, value in fees.items() if item == value]
-                for m in match:
-                    print(f"      {i}: {m}")
-
-    return values_found
-
-
-def map_trace(trace, report, vault):
     fees = assess_fees(vault, report)
-    print(fees)
-    frames = sorted(trace["structLogs"], key=lambda frame: count_values(frame, fees), reverse=True)
-    pcs = Counter()
-    finds = defaultdict(set)
-    for frame in frames[:3]:
-        found = display_frame(frame, fees)
-        for name in found:
-            finds[name] |= found[name]
-        pcs[frame["pc"]] += 1
+    print(fees.as_table(vault.decimals(), "calculated fees"))
 
-    return pcs, finds
+    frames = sorted(trace, key=lambda frame: count_values(frame, fees), reverse=True)
 
+    found = []
+    for frame in frames[:max_frames]:
+        results = display_frame(frame, fees)
+        found.extend(results)
 
-@cli.command("version")
-@click.argument("version")
-def map_version(version):
-    pcs = Counter()
-    finds = defaultdict(set)
-    for path in Path(f"traces").glob(f"v{version}_*.json"):
-        try:
-            pc, found = map_trace(json.loads(path.read_text()))
-            pcs += pc
-            for name in found:
-                finds[name] |= found[name]
-        except AssertionError as e:
-            print(e)
-    print(f"[bold green]most common[/]")
-    for a, b in pcs.most_common():
-        print(a, b)
-    for a, b in finds.items():
-        print(f"[bold green]{a}[/]", b)
-
-
-@cli.command("file")
-@click.argument("path")
-def map_file(path):
-    map_trace(json.loads(Path(path).read_text()))
-
-
-def get_trace_cached(tx, vault=None):
-    receipt = chain.provider.get_transaction(tx)
-    if vault is None:
-        receipt_addresses = {log["address"] for log in receipt.logs}
-        vaults = get_vaults()
-        vault = next(log for log in vaults if log.vault in receipt_addresses)
-        vault = Contract(vault.vault)
-    else:
-        vault = Contract(vault)
-    version = vault.apiVersion()
-    report = next(vault.StrategyReported.from_receipt(receipt))
-
-    path = Path(f"traces/v{version}_{tx}.json")
-    if path.exists():
-        trace = json.loads(path.read_text())
-    else:
-        trace = chain.provider._make_request("debug_traceTransaction", [tx])
-        path.write_text(json.dumps(trace))
-
-    return trace, report, vault
+    return found
 
 
 @cli.command("tx")
 @click.argument("tx")
 @click.option("--vault")
 def map_tx(tx, vault=None):
-    trace, report, vault = get_trace_cached(tx, vault)
-    pcs, finds = map_trace(trace, report, vault)
-    print(f"[bold green]most common[/]")
-    for a, b in pcs.most_common():
-        print(a, b)
-    for a, b in finds.items():
-        print(f"[bold green]{a}[/]", b)
+    found = map_from_tx(tx, vault, max_frames=10)
+
+    name_to_pc = defaultdict(list)
+    pc_to_name = defaultdict(set)
+
+    for item in found:
+        name_to_pc[item.name].append(item.pc)
+        pc_to_name[item.pc].add(item.name)
+
+    print(name_to_pc)
+    print(pc_to_name)
 
 
 if __name__ == "__main__":
+    console = Console()
+
     with networks.ethereum.mainnet.use_default_provider():
-        chain.provider.web3.middleware_onion.remove("attrdict")
         chain.provider.web3.provider._request_kwargs["timeout"] = 600
         cli()
