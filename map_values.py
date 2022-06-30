@@ -4,10 +4,10 @@ import json
 from ape import chain, networks, Contract
 from pathlib import Path
 from rich import print
+from semantic_version import Version
 import click
 
 MAX_BPS = 10_000
-SECS_PER_YEAR_OLD = 31_557_600
 
 
 @click.group()
@@ -16,15 +16,18 @@ def cli():
 
 
 def assess_fees(vault, strategy, event, duration, version):
+    SECS_PER_YEAR = 31_557_600
+    if Version(version) >= Version("0.3.3"):
+        SECS_PER_YEAR = 31_556_952
+
     vault = Contract(vault)
     strategy = Contract(strategy)
 
-    if version in ["0.3.0", "0.3.1", "0.3.2"]:
+    if Version("0.3.0") <= Version(version) <= Version("0.3.3"):
         pre_height = height = event["block_number"] - 1
         gain = event["event_arguments"]["gain"]
-        if version == "0.3.0":
-            total_assets = vault.totalAssets(height=pre_height)
-        elif version in ["0.3.1", "0.3.2"]:
+        total_assets = vault.totalAssets(height=pre_height)
+        if Version(version) >= Version("0.3.1"):
             total_assets = vault.totalDebt(height=pre_height)
         # fee bps
         management_fee_bps = vault.managementFee(height=pre_height)
@@ -37,9 +40,7 @@ def assess_fees(vault, strategy, event, duration, version):
         # assert performance_fee_bps != 0, "bad sample"
         # assert strategist_fee_bps != 0, "bad sample"
 
-        management_fee = (
-            total_assets * duration * management_fee_bps // MAX_BPS // SECS_PER_YEAR_OLD
-        )
+        management_fee = total_assets * duration * management_fee_bps // MAX_BPS // SECS_PER_YEAR
         strategist_fee = 0
         performance_fee = 0
         if gain > 0:

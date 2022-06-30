@@ -1,21 +1,28 @@
 0.3.0:
   - pc: 15660
-    stack:
-      1: management_fee
-      2: governance_fee
-      3: performance_fee
-      3: strategist_fee
+    memory:
+      11: gain
+      13: management_fee
+      14: performance_fee # ?
+      14: strategist_fee # ?
 0.3.1:
-  - pc: 15691
-    stack:
-      1: management_fee
-      2: governance_fee
-      3: performance_fee
-      3: strategist_fee
+  - pc: 15690
+    memory:
+      11: gain
+      13: management_fee
+      14: performance_fee # ?
+      14: strategist_fee # ?
 0.3.2:
-  - pc: 17257
-    stack:
-      1: management_fee
-      2: performance_fee
-      2: strategist_fee
-      3: governance_fee
+  - pc: 17243
+    memory:
+      11: gain
+      13: management_fee
+      14: performance_fee # ?
+      14: strategist_fee # ?
+0.3.3:
+  - pc: 19825
+    memory:
+      11: gain
+      13: management_fee
+      14: performance_fee # ?
+      14: strategist_fee # ?
