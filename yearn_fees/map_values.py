@@ -2,17 +2,19 @@ from collections import defaultdict
 from typing import Literal
 
 import click
-from ape import chain, networks
+from ape import Contract, chain, networks
 from eth_utils import to_int
 from evm_trace import TraceFrame
 from pydantic import BaseModel
 from rich import print
 from rich.console import Console
 from rich.table import Table
+from rich.progress import track
+import random
 
 from yearn_fees.fees import assess_fees
 from yearn_fees.types import Fees
-from yearn_fees.vault_utils import get_endorsed_vaults, get_report_from_tx, get_trace
+from yearn_fees.vault_utils import get_endorsed_vaults, get_report_from_tx, get_reports, get_trace
 
 
 class FoundMapping(BaseModel):
@@ -59,9 +61,13 @@ def display_frame(frame: TraceFrame, fees: Fees):
     return found
 
 
-def map_from_tx(tx, vault=None, max_frames=3):
-    vault, report = get_report_from_tx(tx, vault)
-    trace = get_trace(tx)
+def map_from_tx(tx=None, vault=None, report=None, max_frames=3):
+    # specify either tx and optionally vault, or vault and report
+    if tx is not None:
+        vault, report = get_report_from_tx(tx, vault)
+        trace = get_trace(tx)
+    else:
+        trace = get_trace(report.transaction_hash.hex())
 
     fees = assess_fees(vault, report)
     print(fees.as_table(vault.decimals(), "calculated fees"))
@@ -76,12 +82,7 @@ def map_from_tx(tx, vault=None, max_frames=3):
     return found
 
 
-@cli.command("tx")
-@click.argument("tx")
-@click.option("--vault")
-def map_tx(tx, vault=None):
-    found = map_from_tx(tx, vault, max_frames=10)
-
+def found_to_guess(found):
     name_to_pc = defaultdict(list)
     pc_to_name = defaultdict(set)
 
@@ -91,6 +92,33 @@ def map_tx(tx, vault=None):
 
     print(name_to_pc)
     print(pc_to_name)
+
+
+@cli.command("tx")
+@click.argument("tx")
+@click.option("--vault")
+def map_tx(tx, vault=None):
+    found = map_from_tx(tx, vault, max_frames=10)
+    found_to_guess(found)
+
+
+@cli.command("version")
+@click.argument("version")
+def map_version(version):
+    vaults = get_endorsed_vaults(version)
+    found = []
+    for vault in track(vaults, description=version):
+        vault = Contract(vault)
+        reports = get_reports(vault)
+        profitable = [log for log in reports if log.gain > 0]
+        if not profitable:
+            continue
+
+        for report in random.sample(profitable, 5):
+            results = map_from_tx(vault=vault, report=report, max_frames=5)
+            found.extend(results)
+
+    found_to_guess(found)
 
 
 if __name__ == "__main__":

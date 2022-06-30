@@ -117,6 +117,5 @@ def dump_tx(txhash):
 
 if __name__ == "__main__":
     with networks.ethereum.mainnet.use_default_provider():
-        chain.provider.web3.middleware_onion.remove("attrdict")
         chain.provider.web3.provider._request_kwargs["timeout"] = 600
         cli()
