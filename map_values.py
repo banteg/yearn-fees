@@ -1,3 +1,4 @@
+from collections import Counter
 import sys
 import json
 from ape import chain, networks, Contract
@@ -64,7 +65,9 @@ def assess_fees(vault, strategy, event, duration, version):
 def count_values(frame, fees):
     values_present = set()
     for location in ["stack", "memory"]:
-        values_present |= {value for value in fees.values() if value in frame[f"{location}_int"]}
+        values_present |= {
+            value for value in fees.values() if value in frame[f"{location}_int"] and value != 0
+        }
     return len(values_present)
 
 
@@ -72,37 +75,43 @@ def display_frame(frame, fees):
     print(f'[bold red]{frame["pc"]}[/]')
     for location in ["stack", "memory"]:
         values_present = [value for value in fees.values() if value in frame[f"{location}_int"]]
-        if len(values_present) > 2:
+        if values_present:
             print(f"[cyan]{location}[/]")
             for i, item in enumerate(frame[f"{location}_int"]):
-                match = [name for name, value in fees.items() if item == value]
+                match = [name for name, value in fees.items() if item == value and value != 0]
                 print(f"  {i:2} {item}", ", ".join(match))
 
             print(f"    {location}:")
             for i, item in enumerate(frame[f"{location}_int"]):
-                match = [name for name, value in fees.items() if item == value]
+                match = [name for name, value in fees.items() if item == value and value != 0]
                 for m in match:
                     print(f"      {i}: {m}")
 
 
 def map_trace(data):
     strategy = data["event"]["event_arguments"]["strategy"]
-    fees = assess_fees(
-        data["vault"], strategy, data["event"], data["duration"], data["version"]
-    )
+    fees = assess_fees(data["vault"], strategy, data["event"], data["duration"], data["version"])
     frames = sorted(data["frames"], key=lambda frame: count_values(frame, fees), reverse=True)
+    pcs = Counter()
     for frame in frames[:3]:
         display_frame(frame, fees)
+        pcs[frame["pc"]] += 1
+
+    return pcs
 
 
 @cli.command("version")
 @click.argument("version")
 def map_version(version):
+    pcs = Counter()
     for path in Path(f"traces").glob(f"v{version}_*.json"):
         try:
-            map_trace(json.loads(path.read_text()))
+            pcs += map_trace(json.loads(path.read_text()))
         except AssertionError as e:
             print(e)
+    print(f"[bold green]most common[/]")
+    for a, b in pcs.most_common():
+        print(a, b)
 
 
 @cli.command("file")
