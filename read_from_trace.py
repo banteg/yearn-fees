@@ -18,11 +18,16 @@ def cli():
 def map_trace(trace, version):
     mapping = yaml.safe_load(open("vault-mapping.yml"))
     values = {}
+    print(mapping[version])
+
     for item in mapping[version]:
         frame = next(f for f in trace if f["pc"] == item["pc"])
-        for loc in ["storage", "memory"]:
+        print(frame)
+        for loc in ["stack", "memory"]:
             for pos, key in item.get(loc, {}).items():
                 values[key] = int.from_bytes(HexBytes(frame[loc][pos]), "big")
+            print(loc)
+            print({i: int.from_bytes(HexBytes(v), "big") for i, v in enumerate(frame[loc])})
     return values
 
 
@@ -45,12 +50,16 @@ def get_vaults():
 
 @cli.command("tx")
 @click.argument("tx")
-def read_from_tx(tx):
-    receipt = chain.provider.get_transaction(tx)
-    receipt_addresses = {log["address"] for log in receipt.logs}
-    vaults = get_vaults()
-    vault = next(log for log in vaults if log.vault in receipt_addresses)
-    vault = Contract(vault.vault)
+@click.option("--vault")
+def read_from_tx(tx, vault=None):
+    if vault is None:
+        receipt = chain.provider.get_transaction(tx)
+        receipt_addresses = {log["address"] for log in receipt.logs}
+        vaults = get_vaults()
+        vault = next(log for log in vaults if log.vault in receipt_addresses)
+        vault = Contract(vault.vault)
+    else:
+        vault = Contract(vault)
     version = vault.apiVersion()
     scale = 10 ** vault.decimals()
     trace = chain.provider._make_request("debug_traceTransaction", [tx])
