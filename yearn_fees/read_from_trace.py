@@ -8,7 +8,7 @@ from ape import Contract, chain, convert, networks
 from ape.types import AddressType
 from hexbytes import HexBytes
 from rich import print
-from assess_fees import assess_fees
+from yearn_fees.assess_fees import assess_fees
 from semantic_version import Version
 
 

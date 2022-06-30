@@ -1,7 +1,8 @@
-from decimal import Decimal
 from ape import Contract
 from ape.contracts import ContractInstance, ContractLog
 from semantic_version import Version
+
+from yearn_fees.types import Fees
 
 
 def assess_fees(vault: ContractInstance, report: ContractLog):
@@ -63,14 +64,11 @@ def assess_fees(vault: ContractInstance, report: ContractLog):
         if total_fee > gain:
             total_fee = gain
             management_fee = gain - performance_fee - strategist_fee
-    scale = 10 ** vault.decimals()
 
-    return {
-        "management_fee": Decimal(management_fee) / scale,
-        "performance_fee": Decimal(performance_fee) / scale,
-        "governance_fee": Decimal(management_fee + performance_fee) / scale,
-        "strategist_fee": Decimal(strategist_fee) / scale,
-        "total_fee": Decimal(total_fee) / scale,
-        "duration": duration,
-        "gain": Decimal(gain) / scale,
-    }
+    return Fees(
+        management_fee=management_fee,
+        performance_fee=performance_fee,
+        strategist_fee=strategist_fee,
+        duration=duration,
+        gain=gain,
+    )
