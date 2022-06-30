@@ -29,11 +29,14 @@ def map_trace(trace, version, scale=1):
                 print(i, int.from_bytes(HexBytes(val), "big"))
             for key, pos in item.get(loc, {}).items():
                 values[key] = int.from_bytes(HexBytes(frame[loc][pos]), "big")
-    
+
     # patch management fee
+    values["governance_fee"] = values["management_fee"] + values["performance_fee"]
+    values["total_fee"] = (
+        values["management_fee"] + values["performance_fee"] + values["strategist_fee"]
+    )
     if Version(version) > Version("0.3.5"):
-        total_fee = values["management_fee"] + values["performance_fee"] + values["strategist_fee"]
-        if total_fee > values["gain"]:
+        if values["total_fee"] > values["gain"]:
             values["management_fee"] = (
                 values["gain"] - values["performance_fee"] - values["strategist_fee"]
             )
@@ -85,6 +88,12 @@ def read_from_tx(tx, vault=None):
     print("traced", trace_fees)
     print("report", report.event_arguments)
     print("version", version)
+    print("test")
+    for name in set(fees_calc) | set(trace_fees):
+        a = fees_calc.get(name)
+        b = trace_fees.get(name)
+        match = a == b
+        print(f'[{"green" if match else "red"}]{name} {a} {"==" if match else "!="} {b}')
 
 
 if __name__ == "__main__":
