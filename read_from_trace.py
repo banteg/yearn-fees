@@ -9,6 +9,7 @@ from ape.types import AddressType
 from hexbytes import HexBytes
 from rich import print
 from assess_fees import assess_fees
+from semantic_version import Version
 
 
 @click.group()
@@ -23,8 +24,19 @@ def map_trace(trace, version, scale=1):
     for item in mapping[version]:
         frame = next(f for f in trace if f["pc"] == item["pc"])
         for loc in ["stack", "memory"]:
+            print(loc)
+            for i, val in enumerate(frame[loc]):
+                print(i, int.from_bytes(HexBytes(val), "big"))
             for key, pos in item.get(loc, {}).items():
                 values[key] = int.from_bytes(HexBytes(frame[loc][pos]), "big")
+    
+    # patch management fee
+    if Version(version) > Version("0.3.5"):
+        total_fee = values["management_fee"] + values["performance_fee"] + values["strategist_fee"]
+        if total_fee > values["gain"]:
+            values["management_fee"] = (
+                values["gain"] - values["performance_fee"] - values["strategist_fee"]
+            )
 
     for key in values:
         if key not in ["duration"]:
@@ -68,10 +80,11 @@ def read_from_tx(tx, vault=None):
     trace = chain.provider._make_request("debug_traceTransaction", [tx])
 
     fees_calc = assess_fees(vault, report)
-    print("calculated", fees_calc)
-
     trace_fees = map_trace(trace["structLogs"], version, scale)
+    print("calculated", fees_calc)
     print("traced", trace_fees)
+    print("report", report.event_arguments)
+    print("version", version)
 
 
 if __name__ == "__main__":
