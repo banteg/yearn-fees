@@ -43,8 +43,12 @@ def _get_reports(vault: str):
     return list(vault.StrategyReported.range(*get_range()))
 
 
-def get_reports(vault: ContractInstance) -> Iterable[ContractLog]:
-    return _get_reports(vault.address)
+def get_reports(vault: ContractInstance, only_profitable=False) -> Iterable[ContractLog]:
+    reports = _get_reports(vault.address)
+    if only_profitable:
+        return [log for log in reports if log.gain > 0]
+
+    return reports
 
 
 def log_asof(stack: List[ContractLog], needle: ContractLog):
