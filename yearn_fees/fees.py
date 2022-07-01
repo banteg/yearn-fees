@@ -3,7 +3,7 @@ from ape.contracts import ContractInstance, ContractLog
 from semantic_version import Version
 
 from yearn_fees.types import Fees
-from yearn_fees.vault_utils import get_fees_at_report
+from yearn_fees.vault_utils import get_fee_config_at_report
 
 
 def assess_fees(vault: ContractInstance, report: ContractLog) -> Fees:
@@ -50,7 +50,7 @@ def assess_fees(vault: ContractInstance, report: ContractLog) -> Fees:
         raise ValueError("invalid version %s", version)
 
     MAX_BPS = 10_000
-    conf = get_fees_at_report(report)
+    conf = get_fee_config_at_report(report)
     management_fee = total_assets * duration * conf.management_fee // MAX_BPS // SECS_PER_YEAR
     strategist_fee = gain * conf.strategist_fee // MAX_BPS
     performance_fee = gain * conf.performance_fee // MAX_BPS

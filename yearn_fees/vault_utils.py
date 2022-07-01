@@ -1,6 +1,6 @@
 from collections import defaultdict
 from operator import attrgetter
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 from ape import chain, Contract, convert
 from ape.types import AddressType
 from ape.contracts import ContractInstance, ContractLog
@@ -11,7 +11,10 @@ from yearn_fees.types import AsofDict, FeeHistory, FeeConfiguration
 
 # sort key for logs/events
 LOG_KEY = attrgetter("block_number", "index")
-LOG_RANGE = (11_000_000, chain.blocks.height, 1_000_000)
+
+
+def get_range():
+    return 11_000_000, chain.blocks.height, 1_000_000
 
 
 @lru_cache(maxsize=None)
@@ -23,7 +26,7 @@ def get_registry():
 @lru_cache(maxsize=None)
 def _get_vaults():
     registry = get_registry()
-    return list(registry.NewVault.range(*LOG_RANGE))
+    return list(registry.NewVault.range(*get_range()))
 
 
 def get_endorsed_vaults(version=None):
@@ -37,7 +40,7 @@ def get_endorsed_vaults(version=None):
 @lru_cache
 def _get_reports(vault: str):
     vault = Contract(vault)
-    return list(vault.StrategyReported.range(*LOG_RANGE))
+    return list(vault.StrategyReported.range(*get_range()))
 
 
 def get_reports(vault: ContractInstance) -> Iterable[ContractLog]:
@@ -58,20 +61,20 @@ def log_asof(stack: List[ContractLog], needle: ContractLog):
 def get_vault_fee_config(vault: str) -> FeeHistory:
     vault = Contract(vault)
     management_fee = {
-        LOG_KEY(log): log.managementFee for log in vault.UpdateManagementFee.range(*LOG_RANGE)
+        LOG_KEY(log): log.managementFee for log in vault.UpdateManagementFee.range(*get_range())
     }
     performance_fee = {
-        LOG_KEY(log): log.performanceFee for log in vault.UpdatePerformanceFee.range(*LOG_RANGE)
+        LOG_KEY(log): log.performanceFee for log in vault.UpdatePerformanceFee.range(*get_range())
     }
     strategist_fee = defaultdict(AsofDict)
     # strategy performance fee is set on init
-    for log in vault.StrategyAdded.range(*LOG_RANGE):
+    for log in vault.StrategyAdded.range(*get_range()):
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
     # on update strategy fee
-    for log in vault.StrategyUpdatePerformanceFee.range(*LOG_RANGE):
+    for log in vault.StrategyUpdatePerformanceFee.range(*get_range()):
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
     # and is also inherited on migration
-    for log in vault.StrategyMigrated.range(*LOG_RANGE):
+    for log in vault.StrategyMigrated.range(*get_range()):
         old_strategy = [
             value for key, value in strategist_fee[log.oldVersion].items() if key < LOG_KEY(log)
         ]
@@ -84,13 +87,15 @@ def get_vault_fee_config(vault: str) -> FeeHistory:
     )
 
 
-def get_fees_at_report(report: ContractLog) -> FeeConfiguration:
+def get_fee_config_at_report(report: ContractLog, vault: Optional[str] = None) -> FeeConfiguration:
     """
     A more accurate method to get fee configuration.
     Supports fee adjustments in the same block as report.
     """
     strategy = Contract(report.strategy)
-    fee_conifg = get_vault_fee_config(strategy.vault())
+    if vault is None:
+        vault = strategy.vault()
+    fee_conifg = get_vault_fee_config(vault)
     return fee_conifg.fees_at((report.block_number, report.index), report.strategy)
 
 
