@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 from pydantic import BaseModel
 from rich import box
@@ -68,10 +68,19 @@ class Fees(BaseModel):
         console.print(table)
 
 
-class FeeParameters(BaseModel):
+class FeeConfiguration(BaseModel):
     management_fee: int
     performance_fee: int
     strategist_fee: int
 
     def __str__(self):
         return " ".join(f"{name}={value / 10_000:.2%}" for name, value in self)
+
+
+LogPosition = Tuple[int, int]  # block_number, log_index
+
+
+class FeeHistory(BaseModel):
+    management_fee: Dict[LogPosition, int]
+    performance_fee: Dict[LogPosition, int]
+    strategist_fee: Dict[str, Dict[LogPosition, int]]

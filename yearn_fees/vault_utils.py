@@ -1,3 +1,4 @@
+from collections import defaultdict
 from operator import attrgetter
 from typing import Iterable, List, Tuple
 from ape import chain, Contract, convert
@@ -6,7 +7,11 @@ from ape.contracts import ContractInstance, ContractLog
 from evm_trace import TraceFrame
 from functools import lru_cache
 
-from yearn_fees.types import FeeParameters
+from yearn_fees.types import FeeHistory, FeeConfiguration
+
+# sort key for logs/events
+LOG_KEY = attrgetter("block_number", "index")
+LOG_RANGE = (11_000_000, chain.blocks.height, 1_000_000)
 
 
 @lru_cache(maxsize=None)
@@ -45,7 +50,34 @@ def log_asof(stack: List[ContractLog], needle: ContractLog):
     Useful for establishing ordering within the same block.
     """
     key = attrgetter("block_number", "index")
-    return [item for item in sorted(stack, key=key) if key(item) < key(needle)][-1]
+    stack = sorted(stack, key=key)
+    return [item for item in stack if key(item) < key(needle)][-1]
+
+
+def get_vault_fees_config(vault: ContractInstance):
+    management_fee = {
+        LOG_KEY(log): log.managementFee for log in vault.UpdateManagementFee.range(*LOG_RANGE)
+    }
+    performance_fee = {
+        LOG_KEY(log): log.performanceFee for log in vault.UpdatePerformanceFee.range(*LOG_RANGE)
+    }
+    strategist_fee = defaultdict(dict)
+    for log in vault.StrategyAdded.range(*LOG_RANGE):
+        strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
+    for log in vault.StrategyUpdatePerformanceFee.range(*LOG_RANGE):
+        strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
+    # the strategist fee is inherited on migration
+    for log in vault.StrategyMigrated.range(*LOG_RANGE):
+        old_strategy = [
+            value for key, value in strategist_fee[log.oldVersion].items() if key < LOG_KEY(log)
+        ]
+        strategist_fee[log.newVersion][LOG_KEY(log)] = old_strategy[-1]
+
+    return FeeHistory(
+        management_fee=management_fee,
+        performance_fee=performance_fee,
+        strategist_fee=strategist_fee,
+    )
 
 
 def get_fees_at_harvest(vault: ContractInstance, report: ContractLog) -> int:
