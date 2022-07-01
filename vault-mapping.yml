@@ -46,7 +46,7 @@
       strategist_fee: 15
       performance_fee: 16
 0.4.3:
-  - pc: 20675
+  - pc: 21195
     memory:
       gain: 11
       duration: 13
