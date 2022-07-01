@@ -6,6 +6,19 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 from eth_utils.humanize import humanize_seconds
+from toolz import last
+
+
+class AsofDict(dict):
+    """
+    Allows you to get the closest previous item.
+
+    >>> AsofDict({1: 'a', 3: 'b'})[2]
+    'a'
+    """
+
+    def __getitem__(self, key):
+        return super().__getitem__(last(item for item in sorted(self) if item <= key))
 
 
 class Fees(BaseModel):
