@@ -16,7 +16,9 @@ def map_source(data):
     found_pcs = []
 
     for pc, (start_line, start_column, end_line, end_column) in pos_map.items():
-        if pc not in jump_map or start_line < fn["lineno"] or end_line > fn["end_lineno"]:
+        # if pc not in jump_map:
+        #     continue
+        if start_line < fn["lineno"] or end_line > fn["end_lineno"]:
             continue
 
         found_pcs.append(str(pc))
