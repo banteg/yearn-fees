@@ -59,7 +59,7 @@ def get_reports_with_non_matching_params(vault: ContractInstance) -> Iterable[Co
     fee_conf = get_vault_fee_config(vault.address)
     for log in reports:
         conf = fee_conf.fees_at(LOG_KEY(log), log.strategy)
-        if log.gain != 0 and conf.performance_fee == conf.strategist_fee:
+        if log.gain != 0 and conf.performance_fee != conf.strategist_fee:
             yield log
 
 

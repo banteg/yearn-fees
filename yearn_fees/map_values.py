@@ -20,6 +20,7 @@ from yearn_fees.vault_utils import (
     get_fee_config_at_report,
     get_report_from_tx,
     get_reports,
+    get_reports_with_non_matching_params,
     get_trace,
 )
 
@@ -151,8 +152,7 @@ def display_trace(trace: List[TraceFrame], version, fees):
     console.print(table)
 
     if "duration" not in mem_pos:
-        trace_short = [frame for frame in trace if frame.pc in program_counters]
-        find_value(trace_short, fees.duration)
+        find_value(trace, fees.duration)
 
 
 @cli.command("display_mapped")
@@ -164,7 +164,7 @@ def mapped(version):
 
     for vault in vaults:
         vault = Contract(vault)
-        reports = get_reports(vault, only_profitable=True)
+        reports = list(get_reports_with_non_matching_params(vault))
         if len(reports) > 1:
             reports = random.sample(reports, 1)
 
