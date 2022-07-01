@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Literal
+from typing import List, Literal
 
 import click
 from ape import Contract, chain, networks
@@ -16,6 +16,7 @@ import random
 from yearn_fees.fees import assess_fees
 from yearn_fees.types import Fees
 from yearn_fees.vault_utils import get_endorsed_vaults, get_report_from_tx, get_reports, get_trace
+from yearn_fees.memory_layout import MEMORY_LAYOUT, PROGRAM_COUNTERS
 
 
 class FoundMapping(BaseModel):
@@ -104,6 +105,47 @@ def found_to_guess(found):
 def map_tx(tx, vault=None):
     found = map_from_tx(tx, vault, max_frames=10)
     found_to_guess(found)
+
+
+def display_trace(trace: List[TraceFrame], version):
+    mem_pos = MEMORY_LAYOUT[version]["_assessFees"]
+    program_counters = PROGRAM_COUNTERS[version]
+    table = Table()
+    table.add_column("pc")
+    for name in mem_pos:
+        table.add_column(name)
+
+    for frame in trace:
+        if frame.pc not in program_counters:
+            continue
+        row = [frame.pc]
+        for name, pos in mem_pos.items():
+            try:
+                row.append(str(to_int(frame.memory[pos])))
+            except IndexError:
+                row.append("[dim](unallocated)")
+
+        table.add_row(row)
+
+    console.print(table)
+
+
+@cli.command("display_mapped")
+@click.argument("version")
+def mapped(version):
+    vaults = get_endorsed_vaults(version)
+    if len(vaults) > 1:
+        vaults = random.sample(vaults, 1)
+
+    for vault in vaults:
+        vault = Contract(vault)
+        reports = get_reports(vault, only_profitable=True)
+        if len(reports) > 1:
+            reports = random.sample(reports, 1)
+
+        for report in reports:
+            trace = get_trace(report.transaction_hash.hex())
+            display_trace(trace, version)
 
 
 @cli.command("version")
