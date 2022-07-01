@@ -22,12 +22,14 @@ def map_source(data):
         found_pcs.append(str(pc))
 
         for row, line in enumerate(source_lines[start_line:end_line], start_line):
+            lineno = f"[dim]{row}[/]  "
             if row == start_line:
-                print(f"pc={pc} {jump_map[pc]=} {start_line=}\n{line[start_column:]}")
+                print(f"pc={pc} {jump_map[pc]=} {start_line=}")
+                line = line[start_column:]
             elif row == end_line:
-                print(line[:end_column])
-            else:
-                print(line)
+                line = line[:end_column]
+
+            print(f"{lineno}{line}")
 
     return found_pcs
 
