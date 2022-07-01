@@ -30,10 +30,11 @@ class Fees(BaseModel):
         table.add_column("% gain", justify="right")
 
         for name in ["management_fee", "performance_fee", "strategist_fee", "total_fee", "gain"]:
+            percentage = getattr(self, name) / self.gain if self.gain else 0
             table.add_row(
                 name,
                 format(Decimal(getattr(self, name)) / 10**decimals, f",.{decimals}f"),
-                format(getattr(self, name) / self.gain, ".2%") if name != "gain" else "--",
+                format(percentage, ".2%") if name != "gain" else "",
             )
         if self.duration:
             table.add_row("duration", format(self.duration, ",d"), humanize_seconds(self.duration))
@@ -58,10 +59,19 @@ class Fees(BaseModel):
             )
         table.add_row(
             "duration",
-            format(self.duration, ",d"),
-            format(other.duration, ",d"),
+            format(self.duration, ",d") if self.duration else "--",
+            format(other.duration, ",d") if other.duration else "--",
             f"[green]✔︎" if self.duration == other.duration else "[red]✘",
         )
 
         console = Console()
         console.print(table)
+
+
+class FeeParameters(BaseModel):
+    management_fee: int
+    performance_fee: int
+    strategist_fee: int
+
+    def __str__(self):
+        return " ".join(f"{name}={value / 10_000:.2%}" for name, value in self)
