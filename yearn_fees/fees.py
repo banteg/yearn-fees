@@ -3,6 +3,7 @@ from ape.contracts import ContractInstance, ContractLog
 from semantic_version import Version
 
 from yearn_fees.types import Fees
+from yearn_fees.vault_utils import get_fees_at_report
 
 
 def assess_fees(vault: ContractInstance, report: ContractLog) -> Fees:
@@ -48,15 +49,11 @@ def assess_fees(vault: ContractInstance, report: ContractLog) -> Fees:
     else:
         raise ValueError("invalid version %s", version)
 
-    # NOTE the calculation is inaccurate if fees were changed in the same block as harvest
-    management_fee_bps = vault.managementFee(height=pre_height)
-    performance_fee_bps = vault.performanceFee(height=pre_height)
-    strategist_fee_bps = vault.strategies(strategy, height=pre_height).performanceFee
-
     MAX_BPS = 10_000
-    management_fee = total_assets * duration * management_fee_bps // MAX_BPS // SECS_PER_YEAR
-    strategist_fee = gain * strategist_fee_bps // MAX_BPS
-    performance_fee = gain * performance_fee_bps // MAX_BPS
+    conf = get_fees_at_report(report)
+    management_fee = total_assets * duration * conf.management_fee // MAX_BPS // SECS_PER_YEAR
+    strategist_fee = gain * conf.strategist_fee // MAX_BPS
+    performance_fee = gain * conf.performance_fee // MAX_BPS
 
     total_fee = management_fee + performance_fee + strategist_fee
     # 0.3.5 management fee is reduced if the total fee exceeds the gain
