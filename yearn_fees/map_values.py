@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 from typing import List, Literal
 
@@ -8,15 +9,13 @@ from evm_trace import TraceFrame
 from pydantic import BaseModel
 from rich import print
 from rich.console import Console
-from rich.table import Table
 from rich.progress import Progress
-from rich.progress import track
-import random
+from rich.table import Table
 
 from yearn_fees.fees import assess_fees
+from yearn_fees.memory_layout import MEMORY_LAYOUT, PROGRAM_COUNTERS
 from yearn_fees.types import Fees
 from yearn_fees.vault_utils import get_endorsed_vaults, get_report_from_tx, get_reports, get_trace
-from yearn_fees.memory_layout import MEMORY_LAYOUT, PROGRAM_COUNTERS
 
 
 class FoundMapping(BaseModel):
@@ -107,13 +106,13 @@ def map_tx(tx, vault=None):
     found_to_guess(found)
 
 
-def display_trace(trace: List[TraceFrame], version):
+def display_trace(trace: List[TraceFrame], version, fees=None):
     mem_pos = MEMORY_LAYOUT[version]["_assessFees"]
     program_counters = PROGRAM_COUNTERS[version]
     table = Table()
-    table.add_column("pc", justify='right')
+    table.add_column("pc", justify="right")
     for name in mem_pos:
-        table.add_column(name, justify='right')
+        table.add_column(name, justify="right")
 
     for frame in trace:
         if frame.pc not in program_counters:
@@ -121,7 +120,9 @@ def display_trace(trace: List[TraceFrame], version):
         row = [str(frame.pc)]
         for name, pos in mem_pos.items():
             try:
-                row.append(str(to_int(frame.memory[pos])))
+                value = to_int(frame.memory[pos])
+                style = "[bold yellow]" if value in fees.dict().values() else ""
+                row.append(f"{style}{value}")
             except IndexError:
                 row.append("[dim](unallocated)")
 
@@ -144,8 +145,13 @@ def mapped(version):
             reports = random.sample(reports, 1)
 
         for report in reports:
+            fees = assess_fees(vault, report)
+            fees.as_table(vault.decimals(), "calculated fees")
+
             trace = get_trace(report.transaction_hash.hex())
-            display_trace(trace, version)
+            display_trace(trace, version, fees)
+
+            print(repr(fees))
 
 
 @cli.command("version")
