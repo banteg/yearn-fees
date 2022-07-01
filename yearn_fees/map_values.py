@@ -125,7 +125,7 @@ def display_trace(trace: List[TraceFrame], version):
             except IndexError:
                 row.append("[dim](unallocated)")
 
-        table.add_row(row)
+        table.add_row(*row)
 
     console.print(table)
 
