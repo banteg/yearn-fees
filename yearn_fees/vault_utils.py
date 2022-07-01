@@ -83,10 +83,7 @@ def get_vault_fee_config(vault: str) -> FeeHistory:
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
     # and is also inherited on migration
     for log in vault.StrategyMigrated.range(*get_range()):
-        old_strategy = [
-            value for key, value in strategist_fee[log.oldVersion].items() if key < LOG_KEY(log)
-        ]
-        strategist_fee[log.newVersion][LOG_KEY(log)] = old_strategy[-1]
+        strategist_fee[log.newVersion][LOG_KEY(log)] = strategist_fee[log.oldVersion][LOG_KEY(log)]
 
     return FeeHistory(
         management_fee=AsofDict(management_fee),
