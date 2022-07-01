@@ -118,7 +118,7 @@ def display_trace(trace: List[TraceFrame], version):
     for frame in trace:
         if frame.pc not in program_counters:
             continue
-        row = [frame.pc]
+        row = [str(frame.pc)]
         for name, pos in mem_pos.items():
             try:
                 row.append(str(to_int(frame.memory[pos])))
