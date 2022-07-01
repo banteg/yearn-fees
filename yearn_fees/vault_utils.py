@@ -6,6 +6,8 @@ from ape.types import AddressType
 from ape.contracts import ContractInstance, ContractLog
 from evm_trace import TraceFrame
 from functools import lru_cache
+from yearn_fees.cache import cache
+from toolz import groupby, concat
 
 from yearn_fees.types import AsofDict, FeeHistory, FeeConfiguration
 
@@ -23,21 +25,23 @@ def get_registry():
     return Contract(latest_registry)
 
 
-@lru_cache(maxsize=None)
+@cache.memoize()
 def _get_vaults():
     registry = get_registry()
-    return list(registry.NewVault.range(*get_range()))
+    logs = registry.NewVault.range(*get_range())
+    vaults = groupby(attrgetter("api_version"), logs)
+    return {version: {log.vault for log in vaults[version]} for version in vaults}
 
 
 def get_endorsed_vaults(version=None):
     vaults = _get_vaults()
-    if version is None:
-        return [log.vault for log in vaults]
-    else:
-        return [log.vault for log in vaults if log.api_version == version]
+    if version:
+        return vaults[version]
+
+    return list(concat(vaults.values()))
 
 
-@lru_cache
+# @cache.memoize()
 def _get_reports(vault: str):
     vault = Contract(vault)
     return list(vault.StrategyReported.range(*get_range()))
@@ -61,7 +65,7 @@ def log_asof(stack: List[ContractLog], needle: ContractLog):
     return [item for item in stack if key(item) < key(needle)][-1]
 
 
-@lru_cache(maxsize=None)
+# @cache.memoize()
 def get_vault_fee_config(vault: str) -> FeeHistory:
     vault = Contract(vault)
     management_fee = {
@@ -101,6 +105,11 @@ def get_fee_config_at_report(report: ContractLog, vault: Optional[str] = None) -
         vault = strategy.vault()
     fee_conifg = get_vault_fee_config(vault)
     return fee_conifg.fees_at((report.block_number, report.index), report.strategy)
+
+
+@cache.memoize()
+def get_trace_cached(tx):
+    return list(chain.provider.get_transaction_trace(tx))
 
 
 def get_trace(tx) -> Iterable[TraceFrame]:

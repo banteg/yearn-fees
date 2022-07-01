@@ -6,3 +6,4 @@ traces/*.json
 build
 old
 !metadata/pcs_by_version.json
+cache
