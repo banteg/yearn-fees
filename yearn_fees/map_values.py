@@ -111,9 +111,9 @@ def display_trace(trace: List[TraceFrame], version):
     mem_pos = MEMORY_LAYOUT[version]["_assessFees"]
     program_counters = PROGRAM_COUNTERS[version]
     table = Table()
-    table.add_column("pc")
+    table.add_column("pc", justify='right')
     for name in mem_pos:
-        table.add_column(name)
+        table.add_column(name, justify='right')
 
     for frame in trace:
         if frame.pc not in program_counters:
