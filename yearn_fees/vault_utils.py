@@ -46,7 +46,7 @@ def _get_reports(vault: str):
 def get_reports(vault: ContractInstance, only_profitable=False) -> Iterable[ContractLog]:
     reports = _get_reports(vault.address)
     if only_profitable:
-        return [log for log in reports if log.gain > 0]
+        reports = [log for log in reports if log.gain > 0]
 
     return reports
 

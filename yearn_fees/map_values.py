@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from rich import print
 from rich.console import Console
 from rich.table import Table
+from rich.progress import Progress
 from rich.progress import track
 import random
 
@@ -30,8 +31,11 @@ def cli():
 
 
 def count_values(frame: TraceFrame, fees: Fees):
+    """
+    Count exact matches against stack and memory. Exclude 0 as this value is too common.
+    """
     stack_memory = {to_int(item) for item in frame.stack + frame.memory}
-    return len(stack_memory & {value for _, value in fees})
+    return len(stack_memory & {value for _, value in fees} - {0})
 
 
 def display_frame(frame: TraceFrame, fees: Fees):
@@ -45,7 +49,7 @@ def display_frame(frame: TraceFrame, fees: Fees):
     for loc in ["stack", "memory"]:
         items = [to_int(item) for item in getattr(frame, loc)]
         for pos, item in enumerate(items):
-            matches = [name for name, value in fees if value == item]
+            matches = [name for name, value in fees if value == item and item != 0]
             for name in matches:
                 found.append(FoundMapping(pc=frame.pc, loc=loc, pos=pos, name=name))
             table.add_row(
@@ -70,7 +74,7 @@ def map_from_tx(tx=None, vault=None, report=None, max_frames=3):
         trace = get_trace(report.transaction_hash.hex())
 
     fees = assess_fees(vault, report)
-    print(fees.as_table(vault.decimals(), "calculated fees"))
+    fees.as_table(vault.decimals(), "calculated fees")
 
     frames = sorted(trace, key=lambda frame: count_values(frame, fees), reverse=True)
 
@@ -90,8 +94,8 @@ def found_to_guess(found):
         name_to_pc[item.name].append(item.pc)
         pc_to_name[item.pc].add(item.name)
 
-    print(name_to_pc)
-    print(pc_to_name)
+    console.print(name_to_pc)
+    console.print(pc_to_name)
 
 
 @cli.command("tx")
@@ -105,18 +109,27 @@ def map_tx(tx, vault=None):
 @cli.command("version")
 @click.argument("version")
 def map_version(version):
-    vaults = get_endorsed_vaults(version)
     found = []
-    for vault in track(vaults, description=version):
-        vault = Contract(vault)
-        reports = get_reports(vault)
-        profitable = [log for log in reports if log.gain > 0]
-        if not profitable:
-            continue
+    with Progress(console=console) as progress:
+        vaults = get_endorsed_vaults(version)
+        if len(vaults) > 5:
+            vaults = random.sample(vaults, 5)
 
-        for report in random.sample(profitable, 5):
-            results = map_from_tx(vault=vault, report=report, max_frames=5)
-            found.extend(results)
+        vaults_task = progress.add_task("vaults", total=len(vaults))
+
+        for vault in vaults:
+            vault = Contract(vault)
+            reports = get_reports(vault, only_profitable=True)
+            if len(reports) > 5:
+                reports = random.sample(reports, 5)
+
+            reports_task = progress.add_task("reports", total=len(reports))
+            for report in reports:
+                results = map_from_tx(vault=vault, report=report, max_frames=5)
+                found.extend(results)
+                progress.update(reports_task, advance=1)
+
+            progress.update(vaults_task, advance=1)
 
     found_to_guess(found)
 
