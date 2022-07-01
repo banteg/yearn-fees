@@ -112,6 +112,26 @@ def get_fee_config_at_report(report: ContractLog, vault: Optional[str] = None) -
     return fee_conifg.fees_at((report.block_number, report.index), report.strategy)
 
 
+def how_many_harvests():
+    vaults = _get_vaults()
+    selectors = []
+    for version in vaults:
+        vault = Contract(vaults[version][0])
+        seen = {item.selector for item in selectors}
+        if vault.StrategyReported.abi.selector not in seen:
+            selectors.append(vault.StrategyReported.abi)
+
+    all_vaults = list(concat(vaults.values()))
+    logs = chain.provider.get_contract_logs(
+        address=all_vaults,
+        abi=selectors,
+        start_block=0,
+        stop_block=chain.blocks.height,
+        block_page_size=1_000_000,
+    )
+    return len(list(logs))
+
+
 @cache.memoize()
 def get_trace(tx):
     return list(chain.provider.get_transaction_trace(tx))
