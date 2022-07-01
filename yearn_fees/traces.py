@@ -23,6 +23,26 @@ def get_mapping(version):
     return [TraceMapping.parse_obj(item) for item in mappings[version]]
 
 
+def get_from_trace_033(trace):
+    data = {}
+    for frame in trace:
+        if frame.pc == 19614:
+            data.update(duration=to_int(frame.stack[2]))
+        if frame.pc == 19835:
+            data.update(
+                management_fee=to_int(frame.memory[13]),
+            )
+        if frame.pc == 19846:
+            data.update(performance_fee=to_int(frame.memory[13]) - data["management_fee"])
+        if frame.pc == 20312:
+            data.update(
+                gain=to_int(frame.memory[11]),
+                strategist_fee=to_int(frame.memory[14]),
+            )
+
+    return data
+
+
 def read_from_trace(trace: List[TraceFrame], mapping: List[TraceMapping]):
     """
     Recover data from trace frames using trace mappings.
@@ -43,7 +63,10 @@ def fees_from_trace(trace: Iterator[TraceFrame], version: str):
     Recover fee data from trace frames.
     """
     mapping = get_mapping(version)
-    data = read_from_trace(trace, mapping)
+    if version == "0.3.3":
+        data = get_from_trace_033(trace)
+    else:
+        data = read_from_trace(trace, mapping)
     fees = Fees(**data)
 
     if Version(version) > Version("0.3.5"):
