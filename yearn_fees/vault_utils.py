@@ -7,7 +7,7 @@ from ape.contracts import ContractInstance, ContractLog
 from evm_trace import TraceFrame
 from functools import lru_cache
 
-from yearn_fees.types import FeeHistory, FeeConfiguration
+from yearn_fees.types import AsofDict, FeeHistory, FeeConfiguration
 
 # sort key for logs/events
 LOG_KEY = attrgetter("block_number", "index")
@@ -63,7 +63,7 @@ def get_vault_fee_config(vault: str) -> FeeHistory:
     performance_fee = {
         LOG_KEY(log): log.performanceFee for log in vault.UpdatePerformanceFee.range(*LOG_RANGE)
     }
-    strategist_fee = defaultdict(dict)
+    strategist_fee = defaultdict(AsofDict)
     # strategy performance fee is set on init
     for log in vault.StrategyAdded.range(*LOG_RANGE):
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
@@ -78,8 +78,8 @@ def get_vault_fee_config(vault: str) -> FeeHistory:
         strategist_fee[log.newVersion][LOG_KEY(log)] = old_strategy[-1]
 
     return FeeHistory(
-        management_fee=management_fee,
-        performance_fee=performance_fee,
+        management_fee=AsofDict(management_fee),
+        performance_fee=AsofDict(performance_fee),
         strategist_fee=strategist_fee,
     )
 
