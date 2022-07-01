@@ -30,7 +30,7 @@ def _get_vaults():
     registry = get_registry()
     logs = registry.NewVault.range(*get_range())
     vaults = groupby(attrgetter("api_version"), logs)
-    return {version: {log.vault for log in vaults[version]} for version in vaults}
+    return {version: [log.vault for log in vaults[version]] for version in vaults}
 
 
 def get_endorsed_vaults(version=None):
@@ -105,11 +105,7 @@ def get_fee_config_at_report(report: ContractLog, vault: Optional[str] = None) -
 
 
 @cache.memoize()
-def get_trace_cached(tx):
-    return list(chain.provider.get_transaction_trace(tx))
-
-
-def get_trace(tx) -> Iterable[TraceFrame]:
+def get_trace(tx):
     return list(chain.provider.get_transaction_trace(tx))
 
 
