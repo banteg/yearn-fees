@@ -38,13 +38,14 @@
 # 0.4.0
 # 0.4.1
 0.4.2:
-  - pc: 20805
+  - pc: 21324
     memory:
       gain: 11
       duration: 13
       management_fee: 14
       strategist_fee: 15
       performance_fee: 16
+
 0.4.3:
   - pc: 21195
     memory:
