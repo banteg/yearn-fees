@@ -51,9 +51,15 @@ def assess_fees(vault: ContractInstance, report: ContractLog) -> Fees:
 
     MAX_BPS = 10_000
     conf = get_fee_config_at_report(report)
-    management_fee = total_assets * duration * conf.management_fee // MAX_BPS // SECS_PER_YEAR
-    strategist_fee = gain * conf.strategist_fee // MAX_BPS
-    performance_fee = gain * conf.performance_fee // MAX_BPS
+    print(f'{total_assets=} {duration=}')
+    # 0.3.5 is the only verison that uses a precision factor
+    prec = 1
+    if version == Version('0.3.5'):
+        prec = 10 ** (18 - vault.decimals())
+    
+    management_fee = prec * total_assets * duration * conf.management_fee // MAX_BPS // SECS_PER_YEAR // prec
+    strategist_fee = prec * gain * conf.strategist_fee // MAX_BPS // prec
+    performance_fee = prec * gain * conf.performance_fee // MAX_BPS // prec
 
     total_fee = management_fee + performance_fee + strategist_fee
     # 0.3.5 management fee is reduced if the total fee exceeds the gain
