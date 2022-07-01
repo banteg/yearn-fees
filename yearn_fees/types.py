@@ -94,6 +94,13 @@ LogPosition = Tuple[int, int]  # block_number, log_index
 
 
 class FeeHistory(BaseModel):
-    management_fee: Dict[LogPosition, int]
-    performance_fee: Dict[LogPosition, int]
-    strategist_fee: Dict[str, Dict[LogPosition, int]]
+    management_fee: AsofDict[LogPosition, int]
+    performance_fee: AsofDict[LogPosition, int]
+    strategist_fee: Dict[str, AsofDict[LogPosition, int]]
+
+    def fees_at(self, pos: LogPosition, strategy: str):
+        return FeeConfiguration(
+            management_fee=self.management_fee[pos],
+            performance_fee=self.performance_fee[pos],
+            strategist_fee=self.strategist_fee[strategy][pos],
+        )

@@ -23,7 +23,7 @@ def get_registry():
 @lru_cache(maxsize=None)
 def _get_vaults():
     registry = get_registry()
-    return list(registry.NewVault.range(12_000_000, chain.blocks.height, 1_000_000))
+    return list(registry.NewVault.range(*LOG_RANGE))
 
 
 def get_endorsed_vaults(version=None):
@@ -37,7 +37,7 @@ def get_endorsed_vaults(version=None):
 @lru_cache
 def _get_reports(vault: str):
     vault = Contract(vault)
-    return list(vault.StrategyReported.range(0, chain.blocks.height, 1_000_000))
+    return list(vault.StrategyReported.range(*LOG_RANGE))
 
 
 def get_reports(vault: ContractInstance) -> Iterable[ContractLog]:
@@ -54,7 +54,9 @@ def log_asof(stack: List[ContractLog], needle: ContractLog):
     return [item for item in stack if key(item) < key(needle)][-1]
 
 
-def get_vault_fees_config(vault: ContractInstance):
+@lru_cache(maxsize=None)
+def get_vault_fee_config(vault: str) -> FeeHistory:
+    vault = Contract(vault)
     management_fee = {
         LOG_KEY(log): log.managementFee for log in vault.UpdateManagementFee.range(*LOG_RANGE)
     }
@@ -62,11 +64,13 @@ def get_vault_fees_config(vault: ContractInstance):
         LOG_KEY(log): log.performanceFee for log in vault.UpdatePerformanceFee.range(*LOG_RANGE)
     }
     strategist_fee = defaultdict(dict)
+    # strategy performance fee is set on init
     for log in vault.StrategyAdded.range(*LOG_RANGE):
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
+    # on update strategy fee
     for log in vault.StrategyUpdatePerformanceFee.range(*LOG_RANGE):
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
-    # the strategist fee is inherited on migration
+    # and is also inherited on migration
     for log in vault.StrategyMigrated.range(*LOG_RANGE):
         old_strategy = [
             value for key, value in strategist_fee[log.oldVersion].items() if key < LOG_KEY(log)
@@ -80,24 +84,14 @@ def get_vault_fees_config(vault: ContractInstance):
     )
 
 
-def get_fees_at_harvest(vault: ContractInstance, report: ContractLog) -> int:
+def get_fees_at_report(report: ContractLog) -> FeeConfiguration:
     """
     A more accurate method to get fee configuration.
-    Supports fee adjustments in the same block as harvest.
+    Supports fee adjustments in the same block as report.
     """
     strategy = Contract(report.strategy)
-    vault = Contract(strategy.vault())
-
-    management_fee = vault.UpdateManagementFee.range(0, chain.blocks.height, 1_000_000)
-    performance_fee = vault.UpdatePerformanceFee.range(0, chain.blocks.height, 1_000_000)
-    strategist_fee = vault.StrategyUpdatePerformanceFee.range(
-        0, chain.blocks.height, 1_000_000, event_parameters={"strategy": report.strategy}
-    )
-    return FeeParameters(
-        management_fee=log_asof(management_fee, report).managementFee,
-        performance_fee=log_asof(performance_fee, report).performanceFee,
-        strategist_fee=log_asof(strategist_fee, report).performanceFee,
-    )
+    fee_conifg = get_vault_fee_config(strategy.vault())
+    return fee_conifg.fees_at((report.block_number, report.index), report.strategy)
 
 
 def get_trace(tx) -> Iterable[TraceFrame]:
