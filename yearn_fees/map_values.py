@@ -15,7 +15,13 @@ from rich.table import Table
 from yearn_fees.fees import assess_fees
 from yearn_fees.memory_layout import MEMORY_LAYOUT, PROGRAM_COUNTERS
 from yearn_fees.types import Fees
-from yearn_fees.vault_utils import get_endorsed_vaults, get_report_from_tx, get_reports, get_trace
+from yearn_fees.vault_utils import (
+    get_endorsed_vaults,
+    get_report_from_tx,
+    get_reports,
+    get_trace,
+    get_trace_cached,
+)
 
 
 class FoundMapping(BaseModel):
@@ -106,29 +112,53 @@ def map_tx(tx, vault=None):
     found_to_guess(found)
 
 
-def display_trace(trace: List[TraceFrame], version, fees=None):
+def display_trace(trace: List[TraceFrame], version, fees):
+    highlight_values = set(fees.dict().values()) | {fees.governance_fee, fees.total_fee}
     mem_pos = MEMORY_LAYOUT[version]["_assessFees"]
     program_counters = PROGRAM_COUNTERS[version]
     table = Table()
     table.add_column("pc", justify="right")
+    table.add_column("op")
     for name in mem_pos:
         table.add_column(name, justify="right")
 
-    for frame in trace:
-        if frame.pc not in program_counters:
-            continue
-        row = [str(frame.pc)]
+    count = 0
+    start_indices = []
+    for i, (a, b) in enumerate(zip(trace, trace[1:]), 1):
+        # jump back in _assessFees
+        if a.pc not in program_counters and b.pc in program_counters:
+            count += 1
+            start_indices.append(i)
+
+    print("!!!")
+    print(count, start_indices)
+
+    trace = [frame for frame in trace if frame.pc in program_counters]
+    total_fees = []
+    for i, frame in enumerate(trace):
+        row = [str(frame.pc), frame.op]
         for name, pos in mem_pos.items():
             try:
                 value = to_int(frame.memory[pos])
-                style = "[bold yellow]" if value in fees.dict().values() else ""
+                style = "[bold yellow]" if value in highlight_values else ""
                 row.append(f"{style}{value}")
             except IndexError:
                 row.append("[dim](unallocated)")
+        # fish method
+        try:
+            total_fee = to_int(frame.memory[mem_pos["total_fee"]])
+            if not total_fees or total_fees[-1] != total_fee:
+                total_fees.append(total_fee)
+        except IndexError:
+            pass
 
         table.add_row(*row)
 
     console.print(table)
+
+    console.print(f"total fee changes:")
+    for i, (a, b) in enumerate(zip(total_fees, total_fees[1:])):
+        print(i, b - a)
 
 
 @cli.command("display_mapped")
@@ -145,6 +175,7 @@ def mapped(version):
             reports = random.sample(reports, 1)
 
         for report in reports:
+            print(report.__dict__)
             fees = assess_fees(vault, report)
             fees.as_table(vault.decimals(), "calculated fees")
 
@@ -152,6 +183,20 @@ def mapped(version):
             display_trace(trace, version, fees)
 
             print(repr(fees))
+
+
+@cli.command("display_tx")
+@click.argument("tx")
+def mapped_tx(tx):
+    vault, report = get_report_from_tx(tx)
+
+    fees = assess_fees(vault, report)
+    fees.as_table(vault.decimals(), "calculated fees")
+
+    trace = get_trace_cached(report.transaction_hash.hex())
+    display_trace(trace, vault.apiVersion(), fees)
+
+    print(repr(fees))
 
 
 @cli.command("version")
