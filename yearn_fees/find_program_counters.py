@@ -21,12 +21,12 @@ def map_source(data):
         if start_line < fn["lineno"] or end_line > fn["end_lineno"]:
             continue
 
-        found_pcs.append(str(pc))
+        found_pcs.append(int(pc))
 
         for row, line in enumerate(source_lines[start_line:end_line], start_line):
             lineno = f"[dim]{row}[/]  "
             if row == start_line:
-                print(f"pc={pc} {jump_map[pc]=} {start_line=}")
+                print(f"pc={pc} jump={jump_map.get(pc, 'x')} {start_line=}")
                 line = line[start_column:]
             elif row == end_line:
                 line = line[:end_column]

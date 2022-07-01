@@ -4,3 +4,5 @@ sources/*.vy
 traces/*.json
 .build
 build
+old
+!metadata/pcs_by_version.json
