@@ -86,7 +86,7 @@ def get_reports(
         raise NotImplementedError("add a cached strategy to vault mapping first")
 
     if non_matching_fees:
-        fee_conf = get_vault_fee_config(vault)
+        fee_conf = get_vault_fee_history(vault)
 
         def non_matching_fee(log):
             conf = fee_conf.at_report(log)
@@ -97,18 +97,7 @@ def get_reports(
     return reports
 
 
-def log_asof(stack: List[ContractLog], needle: ContractLog):
-    """
-    Find the last log in the stack preceeding the needle.
-    Useful for establishing ordering within the same block.
-    """
-    key = attrgetter("block_number", "index")
-    stack = sorted(stack, key=key)
-    return [item for item in stack if key(item) < key(needle)][-1]
-
-
-# @cache.memoize()
-def get_vault_fee_config(vault: str) -> FeeHistory:
+def get_vault_fee_history(vault: str) -> FeeHistory:
     vault = Contract(vault)
     management_fee = {
         LOG_KEY(log): log.managementFee for log in vault.UpdateManagementFee.range(*get_range())
@@ -142,7 +131,7 @@ def get_fee_config_at_report(report: ContractLog, vault: Optional[str] = None) -
     strategy = Contract(report.strategy)
     if vault is None:
         vault = strategy.vault()
-    fee_conifg = get_vault_fee_config(vault)
+    fee_conifg = get_vault_fee_history(vault)
 
     return fee_conifg.at_report(report)
 
