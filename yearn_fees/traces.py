@@ -54,16 +54,28 @@ def split_trace(trace, reports):
     return parts
 
 
-def fees_from_trace(trace: Iterator[TraceFrame], version: str):
+def extract_from_stack(trace, pc, pos):
+    frame = next(frame for frame in trace if frame.pc == pc)
+    return to_int(frame.stack[pos])
+
+
+def fees_from_trace(trace: List[TraceFrame], version: str):
     """
-    Recover fee data from trace frames.
+    Recover fees from trace frames. The trace must be already split.
+    The program counters are derived from looking at `yearn-fees layout`.
     """
-    mapping = get_mapping(version)
-    if version == "0.3.3":
-        data = get_from_trace_033(trace)
+    layout = MemoryLayout(trace, version)
+    if version == "0.4.3":
+        data = layout[21195]
+    elif version == "0.4.2":
+        data = layout[21324]
+    elif version == "0.3.5":
+        data = layout[21546]
+        data["duration"] = extract_from_stack(trace, 20506, 4)
     else:
-        data = read_from_trace(trace, mapping)
-    fees = Fees(**data)
+        raise NotImplementedError("unsupported version", version)
+
+    fees = Fees.parse_obj(data)
 
     if Version(version) > Version("0.3.5"):
         if fees.total_fee > fees.gain:
