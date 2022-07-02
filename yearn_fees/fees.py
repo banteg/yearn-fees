@@ -23,7 +23,7 @@ def assess_fees(report: ContractLog) -> Fees:
         duration = b.lastReport - a.lastReport
     elif version >= Version("0.3.5"):
         # the duration would be zero after the first harvest of the same strategy in the block
-        block_reports = reports_from_block(report.block_number, strategy=vault.address)
+        block_reports = reports_from_block(report.block_number, strategy=report.strategy)
         if block_reports.index(report) == 0:
             a = vault.strategies(strategy, height=pre_height)
             b = vault.strategies(strategy, height=report.block_number)
