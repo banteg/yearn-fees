@@ -37,6 +37,11 @@ def get_vaults_by_version() -> Dict[str, List[str]]:
     return {version: [log.vault for log in vaults[version]] for version in vaults}
 
 
+@cache.memoize()
+def get_decimals(contract) -> int:
+    return Contract(contract).decimals()
+
+
 def get_endorsed_vaults(version=None, flat=False):
     """
     Find all vaults of version, or return all vaults by version or as a list.

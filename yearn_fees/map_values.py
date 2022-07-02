@@ -1,7 +1,5 @@
 import random
 from typing import List
-
-import click
 from ape import Contract
 from eth_utils import to_int
 from evm_trace import TraceFrame
@@ -9,12 +7,15 @@ from rich import print
 
 from yearn_fees.fees import assess_fees
 from yearn_fees.memory_layout import MemoryLayout
+from yearn_fees.traces import split_trace
 from yearn_fees.vault_utils import (
+    get_decimals,
     get_endorsed_vaults,
     get_fee_config_at_report,
-    get_report_from_tx,
     get_reports,
     get_trace,
+    reports_from_tx,
+    version_from_report,
 )
 
 
@@ -72,14 +73,20 @@ def display_version(version):
             print(repr(fees))
 
 
-def display_tx(tx, vault=None):
-    vault, report = get_report_from_tx(tx, vault)
-    conf = get_fee_config_at_report(report)
-    print(conf)
-    fees = assess_fees(vault, report)
-    fees.as_table(vault.decimals(), "calculated fees")
+def display_tx(tx):
+    reports = reports_from_tx(tx)
+    print(f"[green]found {len(reports)} reports")
 
-    trace = get_trace(report.transaction_hash.hex())
-    display_trace(trace, vault.apiVersion(), fees)
+    raw_trace = get_trace(tx)
+    traces = split_trace(raw_trace, reports)
 
-    print(repr(fees))
+    for report, trace in zip(reports, traces):
+        conf = get_fee_config_at_report(report)
+        fees = assess_fees(report)
+        decimals = get_decimals(report.contract_address)
+        fees.as_table(decimals, "calculated fees")
+
+        version = version_from_report(report)
+        display_trace(trace, version, fees)
+
+        print(repr(fees))

@@ -9,11 +9,19 @@ import random
 
 import click
 from ape import Contract, chain, networks
+from rich import print
 
 from yearn_fees.fees import assess_fees
 from yearn_fees.map_values import display_tx, display_version
-from yearn_fees.traces import fees_from_trace
-from yearn_fees.vault_utils import get_endorsed_vaults, get_report_from_tx, get_reports, get_trace
+from yearn_fees.traces import fees_from_trace, split_trace
+from yearn_fees.vault_utils import (
+    get_decimals,
+    get_endorsed_vaults,
+    get_reports,
+    get_trace,
+    reports_from_tx,
+    version_from_report,
+)
 
 
 class MainnetCommand(click.Command):
@@ -69,19 +77,25 @@ def compare_version(version):
 @click.argument("tx")
 @click.option("--vault")
 def compare_tx(tx, vault=None):
-    vault, report = get_report_from_tx(tx, vault)
-    version = vault.apiVersion()
-    decimals = vault.decimals()
-    trace = get_trace(tx)
-    print()
+    reports = reports_from_tx(tx)
+    print(f"[green]found {len(reports)} reports")
 
-    fees_calc = assess_fees(vault, report)
-    fees_calc.as_table(decimals, title="calculated fees")
+    raw_trace = get_trace(tx)
+    traces = split_trace(raw_trace, reports)
 
-    fees_trace = fees_from_trace(trace, version)
-    fees_trace.as_table(decimals, title="trace fees")
+    for report, trace in zip(reports, traces):
+        decimals = get_decimals(report.contract_address)
+        version = version_from_report(report)
 
-    fees_calc.compare(fees_trace, decimals)
+        fees_calc = assess_fees(report)
+        fees_calc.as_table(decimals, title="calculated fees")
+
+        fees_calc.as_table(decimals, "calculated fees")
+
+        fees_trace = fees_from_trace(trace, version)
+        fees_trace.as_table(decimals, title="trace fees")
+
+        fees_calc.compare(fees_trace, decimals)
 
 
 @layout.command("version", cls=MainnetCommand)
@@ -93,8 +107,24 @@ def layout_version(version):
 @layout.command("tx", cls=MainnetCommand)
 @click.argument("tx")
 @click.option("--vault", default=None)
-def layout_version(tx, vault):
+def layout_tx(tx, vault):
     display_tx(tx, vault)
+
+
+@cli.command(cls=MainnetCommand)
+def dev():
+    from rich import print
+
+    tx = "0x706151dc2aef97f9688290f393131fe3f07b4f4ac61f82ed37b99e7ac7c4abee"
+    receipt = chain.provider.get_transaction(tx)
+    vault = Contract("0xd9788f3931Ede4D5018184E198699dC6d66C1915")
+    reports = list(vault.StrategyReported.from_receipt(receipt))
+    trace = get_trace(tx)
+    parts, versions = split_trace(trace, reports)
+    print([len(x) for x in parts])
+    print(versions)
+    result = [fees_from_trace(p, v) for p, v in zip(parts, versions)]
+    print(result)
 
 
 if __name__ == "__main__":
