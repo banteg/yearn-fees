@@ -6,13 +6,13 @@ from yearn_fees.types import Fees
 from yearn_fees.vault_utils import get_fee_config_at_report
 
 
-def assess_fees(vault: ContractInstance, report: ContractLog) -> Fees:
+def assess_fees(report: ContractLog) -> Fees:
     """
     A reimplementation of Vault._assessFees which supports all api versions.
     """
+    vault = Contract(report.contract_address)
     strategy = Contract(report.strategy)
     pre_height = report.block_number - 1
-    gain = report.gain
     version = Version(vault.apiVersion())
 
     a = vault.strategies(strategy, height=pre_height)
@@ -29,7 +29,7 @@ def assess_fees(vault: ContractInstance, report: ContractLog) -> Fees:
 
     # 0.4.0 no fees are charged if there was no gain
     if version >= Version("0.4.0"):
-        if gain == 0:
+        if report.gain == 0:
             return {}
     # 0.3.5 read total debt and delegated assets from strategy
     if version >= Version("0.3.5"):
@@ -53,25 +53,26 @@ def assess_fees(vault: ContractInstance, report: ContractLog) -> Fees:
     conf = get_fee_config_at_report(report)
     print(f'{total_assets=} {duration=}')
     # 0.3.5 is the only verison that uses a precision factor
-    prec = 1
     if version == Version('0.3.5'):
         prec = 10 ** (18 - vault.decimals())
-    
+    else:
+        prec = 1
+
     management_fee = prec * total_assets * duration * conf.management_fee // MAX_BPS // SECS_PER_YEAR // prec
-    strategist_fee = prec * gain * conf.strategist_fee // MAX_BPS // prec
-    performance_fee = prec * gain * conf.performance_fee // MAX_BPS // prec
+    strategist_fee = prec * report.gain * conf.strategist_fee // MAX_BPS // prec
+    performance_fee = prec * report.gain * conf.performance_fee // MAX_BPS // prec
 
     total_fee = management_fee + performance_fee + strategist_fee
     # 0.3.5 management fee is reduced if the total fee exceeds the gain
     if version >= Version("0.3.5"):
-        if total_fee > gain:
-            total_fee = gain
-            management_fee = gain - performance_fee - strategist_fee
+        if total_fee > report.gain:
+            total_fee = report.gain
+            management_fee = report.gain - performance_fee - strategist_fee
 
     return Fees(
         management_fee=management_fee,
         performance_fee=performance_fee,
         strategist_fee=strategist_fee,
         duration=duration,
-        gain=gain,
+        gain=report.gain,
     )
