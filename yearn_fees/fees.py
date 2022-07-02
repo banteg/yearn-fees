@@ -15,11 +15,16 @@ def assess_fees(report: ContractLog) -> Fees:
     pre_height = report.block_number - 1
     version = Version(vault.apiVersion())
 
-    a = vault.strategies(strategy, height=pre_height)
-    b = vault.strategies(strategy, height=report.block_number)
-    # would be inaccurate if multiple harvests occured at the same block
-    # 0.4.0 asserts duration is non-zero
-    duration = b.lastReport - a.lastReport
+    if version >= Version("0.3.5"):
+        # would be inaccurate if multiple harvests of the same strategy happened in the same block
+        a = vault.strategies(strategy, height=pre_height)
+        b = vault.strategies(strategy, height=report.block_number)
+        # 0.4.0 asserts duration is non-zero
+        duration = b.lastReport - a.lastReport
+    else:
+        b = vault.lastReport(height=report.block_number)
+        a = vault.lastReport(height=pre_height)
+        duration = b - a
 
     # 0.3.3 year changed from 365.25 to 365.2425 days
     if version >= Version("0.3.3"):
@@ -51,14 +56,16 @@ def assess_fees(report: ContractLog) -> Fees:
 
     MAX_BPS = 10_000
     conf = get_fee_config_at_report(report)
-    print(f'{total_assets=} {duration=}')
+    print(f"{total_assets=} {duration=}")
     # 0.3.5 is the only verison that uses a precision factor
-    if version == Version('0.3.5'):
+    if version == Version("0.3.5"):
         prec = 10 ** (18 - vault.decimals())
     else:
         prec = 1
 
-    management_fee = prec * total_assets * duration * conf.management_fee // MAX_BPS // SECS_PER_YEAR // prec
+    management_fee = (
+        prec * total_assets * duration * conf.management_fee // MAX_BPS // SECS_PER_YEAR // prec
+    )
     strategist_fee = prec * report.gain * conf.strategist_fee // MAX_BPS // prec
     performance_fee = prec * report.gain * conf.performance_fee // MAX_BPS // prec
 
