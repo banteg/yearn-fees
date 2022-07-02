@@ -6,7 +6,7 @@ from typing import Iterable, List, Optional, Tuple
 from ape import Contract, chain, convert
 from ape.contracts import ContractInstance, ContractLog
 from ape.types import AddressType
-from toolz import concat, groupby, unique
+from toolz import concat, groupby, unique, valfilter
 
 from yearn_fees.cache import cache
 from yearn_fees.types import AsofDict, FeeConfiguration, FeeHistory
@@ -97,6 +97,16 @@ def get_reports(
     return reports
 
 
+def get_txs_with_multiple_reports():
+    """
+    Find transactions where multiple reports have happened.
+    """
+    reports = get_reports()
+    return valfilter(
+        lambda logs: len(logs) >= 2, groupby(lambda log: log.transaction_hash, reports)
+    )
+
+
 def get_vault_fee_history(vault: str) -> FeeHistory:
     vault = Contract(vault)
     management_fee = {
@@ -146,7 +156,7 @@ def get_report_from_tx(tx, vault=None) -> Tuple[ContractInstance, ContractLog]:
     if vault is None:
         receipt_addresses = {log["address"] for log in receipt.logs}
         vault = set(get_endorsed_vaults(flat=True)) & receipt_addresses
-        assert len(vault) == 1, f'multiple harvests: {len(vault)}'
+        assert len(vault) == 1, f"multiple harvests: {len(vault)}"
         vault = vault.pop()
 
     vault = Contract(vault)
