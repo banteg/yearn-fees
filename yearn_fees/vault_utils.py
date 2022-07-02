@@ -47,6 +47,29 @@ def _get_reports(vault: str):
     return list(vault.StrategyReported.range(*get_range()))
 
 
+def fetch_all_reports() -> List[ContractLog]:
+    """
+    Fetch all StrategyReported events for all endorsed vaults.
+    """
+    vaults = _get_vaults()
+    # find all variants of the selector
+    strategy_reported = list(
+        unique(
+            [Contract(item[0]).StrategyReported.abi for item in vaults.values()],
+            key=lambda abi: abi.selector,
+        )
+    )
+    all_vaults = list(concat(vaults.values()))
+    logs = chain.provider.get_contract_logs(
+        address=all_vaults,
+        abi=strategy_reported,
+        start_block=0,
+        stop_block=chain.blocks.height,
+        block_page_size=1_000_000,
+    )
+    return list(logs)
+
+
 def get_reports(vault: ContractInstance, only_profitable=False) -> Iterable[ContractLog]:
     reports = _get_reports(vault.address)
     if only_profitable:
