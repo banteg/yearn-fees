@@ -65,7 +65,7 @@ class MemoryLayout(dict):
         table.add_column("pc", justify="right")
         table.add_column("op")
 
-        for fn, positions in self._memory_layout:
+        for fn, positions in self._memory_layout.items():
             for name in positions:
                 table.add_column(name, justify="right")
 
