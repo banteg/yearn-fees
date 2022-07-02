@@ -33,12 +33,15 @@ def _get_vaults():
     return {version: [log.vault for log in vaults[version]] for version in vaults}
 
 
-def get_endorsed_vaults(version=None):
+def get_endorsed_vaults(version=None, flat=False):
     vaults = _get_vaults()
     if version:
         return vaults[version]
 
-    return list(concat(vaults.values()))
+    if flat:
+        return list(concat(vaults.values()))
+
+    return vaults
 
 
 @cache.memoize()

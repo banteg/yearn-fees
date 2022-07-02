@@ -55,13 +55,13 @@ def display_trace(trace: List[TraceFrame], version, fees):
 
 
 def display_version(version):
-    vaults = get_endorsed_vaults(version)
+    vaults = get_endorsed_vaults(version=version)
     if len(vaults) > 1:
         vaults = random.sample(vaults, 1)
 
     for vault in vaults:
         vault = Contract(vault)
-        reports = list(get_reports(vault=vault, only_profitable=True, non_matching_fees=True))
+        reports = get_reports(vault=vault, only_profitable=True, non_matching_fees=True)
         if len(reports) > 1:
             reports = random.sample(reports, 1)
 
