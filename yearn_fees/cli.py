@@ -6,25 +6,39 @@ yearn-fees compare version 0.4.3
 yearn-fees compare tx 0xabc..def
 """
 import random
-from ape import chain, networks, Contract
-from yearn_fees.traces import fees_from_trace
-from yearn_fees.vault_utils import get_endorsed_vaults, get_reports, get_trace, get_report_from_tx
-from yearn_fees.fees import assess_fees
-from yearn_fees.map_values import display_version, display_tx
+
 import click
+from ape import Contract, chain, networks
+
+from yearn_fees.fees import assess_fees
+from yearn_fees.map_values import display_tx, display_version
+from yearn_fees.traces import fees_from_trace
+from yearn_fees.vault_utils import get_endorsed_vaults, get_report_from_tx, get_reports, get_trace
+
+
+class MainnetCommand(click.Command):
+    def invoke(self, ctx):
+        with networks.ethereum.mainnet.use_default_provider():
+            chain.provider.web3.provider._request_kwargs["timeout"] = 600
+            super().invoke(ctx)
 
 
 @click.group()
+def cli():
+    pass
+
+
+@cli.group()
 def layout():
     pass
 
 
-@click.group()
+@cli.group()
 def compare():
     pass
 
 
-@compare.command("version")
+@compare.command("version", cls=MainnetCommand)
 @click.argument("version")
 def compare_version(version):
     vaults = get_endorsed_vaults(version)
@@ -51,7 +65,7 @@ def compare_version(version):
             fees_calc.compare(fees_trace, decimals)
 
 
-@compare.command("tx")
+@compare.command("tx", cls=MainnetCommand)
 @click.argument("tx")
 @click.option("--vault")
 @click.option("--compare", is_flag=True)
@@ -72,22 +86,18 @@ def compare_tx(tx, vault=None, compare=False):
         fees_calc.compare(fees_trace, decimals)
 
 
-@layout.command("version")
+@layout.command("version", cls=MainnetCommand)
 @click.argument("version")
 def layout_version(version):
     display_version(version)
 
 
-@layout.command("tx")
+@layout.command("tx", cls=MainnetCommand)
 @click.argument("tx")
 @click.option("--vault", default=None)
 def layout_version(tx, vault):
-    mapped_tx(tx, vault)
+    display_tx(tx, vault)
 
-
-cli = click.CommandCollection(sources=[layout, compare])
 
 if __name__ == "__main__":
-    with networks.ethereum.mainnet.use_default_provider():
-        chain.provider.web3.provider._request_kwargs["timeout"] = 600
-        cli()
+    cli()
