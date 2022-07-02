@@ -2,6 +2,8 @@ from asyncio import selector_events
 from collections import defaultdict
 from functools import lru_cache
 from operator import attrgetter
+import random
+from re import L
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from ape import Contract, chain, convert
@@ -126,6 +128,22 @@ def get_reports(
         reports = [log for log in reports if non_matching_fee(log)]
 
     return reports
+
+
+def get_sample_txs(version, num_vaults, num_txs):
+    """
+    Sample a version using several vaults and several txs from each vault.
+    """
+    reports = get_reports()
+    vaults = get_endorsed_vaults(version)
+    num_vaults = min(num_vaults, len(vaults))
+
+    txs = []
+    for vault in random.sample(vaults, num_vaults):
+        vault_txs = list(unique(log.transaction_hash for log in reports if log.contract_address == vault]))
+        txs.extend(random.sample(vault_txs, min(num_txs, len(vault_txs))))
+    
+    return txs
 
 
 def txs_with_multiple_reports():
