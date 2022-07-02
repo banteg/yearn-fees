@@ -68,8 +68,7 @@ def compare_version(version):
 @compare.command("tx", cls=MainnetCommand)
 @click.argument("tx")
 @click.option("--vault")
-@click.option("--compare", is_flag=True)
-def compare_tx(tx, vault=None, compare=False):
+def compare_tx(tx, vault=None):
     vault, report = get_report_from_tx(tx, vault)
     version = vault.apiVersion()
     decimals = vault.decimals()
@@ -82,8 +81,7 @@ def compare_tx(tx, vault=None, compare=False):
     fees_trace = fees_from_trace(trace, version)
     fees_trace.as_table(decimals, title="trace fees")
 
-    if compare:
-        fees_calc.compare(fees_trace, decimals)
+    fees_calc.compare(fees_trace, decimals)
 
 
 @layout.command("version", cls=MainnetCommand)
