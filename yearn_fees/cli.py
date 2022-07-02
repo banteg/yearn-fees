@@ -55,22 +55,12 @@ def compare_version(version):
 
     for vault in vaults:
         vault = Contract(vault)
-        decimals = vault.decimals()
         reports = get_reports(vault, only_profitable=True)
         if len(reports) > 5:
             reports = random.sample(reports, 5)
 
-        for report in reports:
-            print(report.__dict__)
-
-            fees_calc = assess_fees(report)
-            fees_calc.as_table(decimals, title="calculated fees")
-
-            trace = get_trace(report.transaction_hash.hex())
-            fees_trace = fees_from_trace(trace, version)
-            fees_trace.as_table(decimals, title="trace fees")
-
-            fees_calc.compare(fees_trace, decimals)
+        for base in reports:
+            compare_tx(base.transaction_hash)
 
 
 @compare.command("tx", cls=MainnetCommand)
