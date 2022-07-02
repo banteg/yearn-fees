@@ -41,12 +41,6 @@ def get_endorsed_vaults(version=None):
     return list(concat(vaults.values()))
 
 
-# @cache.memoize()
-def _get_reports(vault: str):
-    vault = Contract(vault)
-    return list(vault.StrategyReported.range(*get_range()))
-
-
 @cache.memoize()
 def fetch_all_reports() -> List[ContractLog]:
     """
@@ -71,21 +65,33 @@ def fetch_all_reports() -> List[ContractLog]:
     return list(logs)
 
 
-def get_reports(vault: ContractInstance, only_profitable=False) -> Iterable[ContractLog]:
-    reports = _get_reports(vault.address)
+def get_reports(
+    vault: str = None, only_profitable=False, non_matching_fees=False
+) -> List[ContractLog]:
+    """
+    Get all vault reports, filtering them by vault, gain, or non-matching performance/strategist fees.
+    """
+    reports = fetch_all_reports()
+
+    if vault:
+        reports = [log for log in reports if log.contract_address == vault]
+
     if only_profitable:
         reports = [log for log in reports if log.gain > 0]
 
+    if not vault and non_matching_fee:
+        raise NotImplementedError("add a cached strategy to vault mapping first")
+
+    if non_matching_fees:
+        fee_conf = get_vault_fee_config(vault)
+
+        def non_matching_fee(log):
+            conf = fee_conf.at_report(log)
+            return conf.performance_fee != conf.strategist_fee
+
+        reports = [log for log in reports if non_matching_fee(log)]
+
     return reports
-
-
-def get_reports_with_non_matching_params(vault: ContractInstance) -> Iterable[ContractLog]:
-    reports = _get_reports(vault.address)
-    fee_conf = get_vault_fee_config(vault.address)
-    for log in reports:
-        conf = fee_conf.fees_at(LOG_KEY(log), log.strategy)
-        if log.gain != 0 and conf.performance_fee != conf.strategist_fee:
-            yield log
 
 
 def log_asof(stack: List[ContractLog], needle: ContractLog):
@@ -134,7 +140,8 @@ def get_fee_config_at_report(report: ContractLog, vault: Optional[str] = None) -
     if vault is None:
         vault = strategy.vault()
     fee_conifg = get_vault_fee_config(vault)
-    return fee_conifg.fees_at((report.block_number, report.log_index), report.strategy)
+
+    return fee_conifg.at_report(report)
 
 
 @cache.memoize()
