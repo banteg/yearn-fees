@@ -57,8 +57,8 @@ def display_trace(trace: List[TraceFrame], version, fees):
 
 def display_version(version):
     vaults = get_endorsed_vaults(version=version)
-    if len(vaults) > 1:
-        vaults = random.sample(vaults, 1)
+    if len(vaults) > 3:
+        vaults = random.sample(vaults, 3)
 
     for vault in vaults:
         vault = Contract(vault)
@@ -68,8 +68,9 @@ def display_version(version):
 
         for report in reports:
             print(report.__dict__)
-            fees = assess_fees(vault, report)
-            fees.as_table(vault.decimals(), "calculated fees")
+            fees = assess_fees(report)
+            decimals = get_decimals(report.contract_address)
+            fees.as_table(decimals, "calculated fees")
 
             trace = get_trace(report.transaction_hash.hex())
             display_trace(trace, version, fees)
