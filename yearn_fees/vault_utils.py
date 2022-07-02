@@ -68,6 +68,12 @@ def fetch_all_reports() -> List[ContractLog]:
     return list(logs)
 
 
+def get_version_from_report(report: ContractLog):
+    vaults = get_endorsed_vaults()
+    version = next(version for version in vaults if report.contract_address in vaults[version])
+    return version
+
+
 def get_reports(
     vault: str = None, only_profitable=False, non_matching_fees=False
 ) -> List[ContractLog]:

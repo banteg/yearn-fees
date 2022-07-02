@@ -1,26 +1,12 @@
-from typing import Dict, Iterator, List, Optional
+from typing import List
 
-import yaml
 from eth_utils import to_int
 from evm_trace import TraceFrame
-from pydantic import BaseModel, Field
 from semantic_version import Version
 
+from yearn_fees.memory_layout import PROGRAM_COUNTERS, MemoryLayout
 from yearn_fees.types import Fees
-
-
-class TraceMapping(BaseModel):
-    pc: int
-    stack: Optional[Dict[str, int]] = Field(default_factory=dict)
-    memory: Optional[Dict[str, int]] = Field(default_factory=dict)
-
-
-def get_mapping(version):
-    mappings = yaml.safe_load(open("vault-mapping.yml"))
-    if version not in mappings:
-        raise ValueError("unsupported version", version)
-
-    return [TraceMapping.parse_obj(item) for item in mappings[version]]
+from yearn_fees.vault_utils import get_version_from_report
 
 
 def get_from_trace_033(trace):
@@ -48,9 +34,7 @@ def split_trace(trace, reports):
     versions = []
 
     for report in reports:
-        strategy = Contract(report.strategy)
-        vault = Contract(strategy.vault())
-        version = vault.apiVersion()
+        version = get_version_from_report(report)
         program_counters = PROGRAM_COUNTERS[version]
         jump_in = next(
             i
