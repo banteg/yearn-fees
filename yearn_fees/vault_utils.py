@@ -1,7 +1,7 @@
 from collections import defaultdict
 from functools import lru_cache
 from operator import attrgetter
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from ape import Contract, chain, convert
 from ape.contracts import ContractInstance, ContractLog
@@ -21,12 +21,15 @@ def get_range():
 
 @lru_cache(maxsize=None)
 def get_registry():
+    """
+    Get the latest vault registry on mainnet.
+    """
     latest_registry = convert("v2.registry.ychad.eth", AddressType)
     return Contract(latest_registry)
 
 
 @cache.memoize()
-def _get_vaults():
+def get_vaults_by_version() -> Dict[str, List[str]]:
     registry = get_registry()
     logs = registry.NewVault.range(*get_range())
     vaults = groupby(attrgetter("api_version"), logs)
@@ -34,7 +37,10 @@ def _get_vaults():
 
 
 def get_endorsed_vaults(version=None, flat=False):
-    vaults = _get_vaults()
+    """
+    Find all vaults of version, or return all vaults by version or as a list.
+    """
+    vaults = get_vaults_by_version()
     if version:
         return vaults[version]
 
@@ -44,20 +50,24 @@ def get_endorsed_vaults(version=None, flat=False):
     return vaults
 
 
+def vault_selectors(event_name):
+    """
+    Find all variants of an event selector across all vault versions.
+    """
+    each_version = [Contract(vaults[0]) for vaults in get_vaults_by_version().values()]
+    return list(
+        unique(getattr(vault, event_name).abi for vault in each_version),
+        key=lambda abi: abi.selector,
+    )
+
+
 @cache.memoize()
 def fetch_all_reports() -> List[ContractLog]:
     """
     Fetch all StrategyReported events for all endorsed vaults.
     """
-    vaults = _get_vaults()
-    # find all variants of the selector
-    strategy_reported = list(
-        unique(
-            [Contract(item[0]).StrategyReported.abi for item in vaults.values()],
-            key=lambda abi: abi.selector,
-        )
-    )
-    all_vaults = list(concat(vaults.values()))
+    all_vaults = get_endorsed_vaults(flat=True)
+    strategy_reported = vault_selectors("StrategyReported")
     logs = chain.provider.get_contract_logs(
         address=all_vaults,
         abi=strategy_reported,
@@ -68,9 +78,16 @@ def fetch_all_reports() -> List[ContractLog]:
     return list(logs)
 
 
-def get_version_from_report(report: ContractLog):
+def version_from_report(report: ContractLog):
+    """
+    Return a cached api version (for endorsed vaults) or read from chain.
+    """
     vaults = get_endorsed_vaults()
-    version = next(version for version in vaults if report.contract_address in vaults[version])
+    try:
+        version = next(version for version in vaults if report.contract_address in vaults[version])
+    except StopIteration:
+        version = Contract(report.contract_address).apiVersion()
+
     return version
 
 
@@ -103,13 +120,35 @@ def get_reports(
     return reports
 
 
-def get_txs_with_multiple_reports():
+def txs_with_multiple_reports():
     """
     Find transactions where multiple reports have happened.
     """
     reports = get_reports()
     return valfilter(
         lambda logs: len(logs) >= 2, groupby(lambda log: log.transaction_hash, reports)
+    )
+
+
+def txs_with_multiple_vault_harvests():
+    """
+    Find transaction with multiple harvests of the same vault.
+    """
+    reports = get_reports()
+    return valfilter(
+        lambda logs: len(logs) >= 2,
+        groupby(lambda log: (log.transaction_hash, log.contract_address), reports),
+    )
+
+
+def txs_with_multiple_strategy_harvests():
+    """
+    Find transaction with multiple harvests of the same strategy (0 duration).
+    """
+    reports = get_reports()
+    return valfilter(
+        lambda logs: len(logs) >= 2,
+        groupby(lambda log: (log.transaction_hash, log.strategy), reports),
     )
 
 
