@@ -63,7 +63,7 @@ def compare_version(version):
         for report in reports:
             print(report.__dict__)
 
-            fees_calc = assess_fees(vault, report)
+            fees_calc = assess_fees(report)
             fees_calc.as_table(decimals, title="calculated fees")
 
             trace = get_trace(report.transaction_hash.hex())
