@@ -1,3 +1,4 @@
+from asyncio import selector_events
 from collections import defaultdict
 from functools import lru_cache
 from operator import attrgetter
@@ -198,14 +199,10 @@ def get_trace(tx):
     return list(chain.provider.get_transaction_trace(tx))
 
 
-def get_report_from_tx(tx, vault=None) -> Tuple[ContractInstance, ContractLog]:
+def reports_from_tx(tx) -> List[ContractLog]:
+    logs = []
     receipt = chain.provider.get_transaction(tx)
-    if vault is None:
-        receipt_addresses = {log["address"] for log in receipt.logs}
-        vault = set(get_endorsed_vaults(flat=True)) & receipt_addresses
-        assert len(vault) == 1, f"multiple harvests: {len(vault)}"
-        vault = vault.pop()
+    for event in vault_selectors("StrategyReported"):
+        logs.extend(receipt.decode_logs(event))
 
-    vault = Contract(vault)
-    report = next(vault.StrategyReported.from_receipt(receipt))
-    return vault, report
+    return sorted(logs, key=LOG_KEY)
