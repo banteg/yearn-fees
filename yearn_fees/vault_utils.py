@@ -204,6 +204,7 @@ def get_trace(tx):
     return list(chain.provider.get_transaction_trace(tx))
 
 
+@cache.memoize()
 def reports_from_tx(tx) -> List[ContractLog]:
     logs = []
     receipt = chain.provider.get_transaction(tx)

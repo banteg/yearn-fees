@@ -43,31 +43,41 @@ class MemoryLayout(dict):
     """
 
     def __init__(self, trace: List[TraceFrame], version: str):
-        self._memory_layout = MEMORY_LAYOUT[version]
+        self._memory_layout = {
+            key: value
+            for key, value in MEMORY_LAYOUT[version]["_assessFees"].items()
+            if key not in ["#internal_0", "strategy"]
+        }
         self._program_coutners = PROGRAM_COUNTERS[version]
 
         for frame in trace:
             if frame.pc not in self._program_coutners:
                 continue
             self[frame.pc] = {"op": frame.op}
-            for fn, positions in self._memory_layout.items():
-                for name, pos in positions.items():
-                    try:
-                        self[frame.pc][name] = to_int(frame.memory[pos])
-                    except IndexError:
-                        self[frame.pc][name] = None
+            for name, pos in self._memory_layout.items():
+                if name.startswith("#internal"):
+                    continue
+                try:
+                    self[frame.pc][name] = to_int(frame.memory[pos])
+                except IndexError:
+                    self[frame.pc][name] = None
 
-    def display(self, highlight_values=None, console=None):
+    def display(self, highlight):
         """
-        Display memory layout as a table.
+        Display memory layout as a table with highlighted matching values.
         """
+        names = {name: color for color, name in enumerate(highlight, 1)}
+        values = {value: color for color, value in enumerate(highlight.values(), 1)}
+
         table = Table()
         table.add_column("pc", justify="right")
         table.add_column("op")
 
-        for fn, positions in self._memory_layout.items():
-            for name in positions:
-                table.add_column(name, justify="right")
+        for name in self._memory_layout:
+            table.add_column(
+                f"[color({names[name]})]{name}\n{highlight[name]}" if name in names else name,
+                justify="right",
+            )
 
         for pc, layout in self.items():
             row = [f"{pc}", f'{layout["op"]}']
@@ -77,12 +87,11 @@ class MemoryLayout(dict):
                 if value is None:
                     row.append(f"[dim](unallocated)")
                 else:
-                    style = f"[bold yellow]" if value in highlight_values else ""
+                    color = values.get(value)
+                    style = f"[color({color})]" if color else ""
                     row.append(f"{style}{value}")
 
             table.add_row(*row)
 
-        if console is None:
-            console = Console()
-
+        console = Console()
         console.print(table)

@@ -84,6 +84,8 @@ def compare_tx(tx, vault=None):
     traces = split_trace(raw_trace, reports)
 
     for report, trace in zip(reports, traces):
+        print(report.__dict__)
+
         decimals = get_decimals(report.contract_address)
         version = version_from_report(report)
 
@@ -106,9 +108,8 @@ def layout_version(version):
 
 @layout.command("tx", cls=MainnetCommand)
 @click.argument("tx")
-@click.option("--vault", default=None)
-def layout_tx(tx, vault):
-    display_tx(tx, vault)
+def layout_tx(tx):
+    display_tx(tx)
 
 
 @cli.command(cls=MainnetCommand)

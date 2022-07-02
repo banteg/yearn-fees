@@ -6,7 +6,7 @@ from semantic_version import Version
 
 from yearn_fees.memory_layout import PROGRAM_COUNTERS, MemoryLayout
 from yearn_fees.types import Fees
-from yearn_fees.vault_utils import get_version_from_report
+from yearn_fees.vault_utils import version_from_report
 
 
 def get_from_trace_033(trace):
@@ -30,11 +30,13 @@ def get_from_trace_033(trace):
 
 
 def split_trace(trace, reports):
+    """
+    Splits a trace into chunks covering _assessFees.
+    """
     parts = []
-    versions = []
 
     for report in reports:
-        version = get_version_from_report(report)
+        version = version_from_report(report)
         program_counters = PROGRAM_COUNTERS[version]
         jump_in = next(
             i
@@ -47,10 +49,9 @@ def split_trace(trace, reports):
             if frame.pc == program_counters[-1] and frame.op == "JUMP"
         )
         parts.append(trace[jump_in:jump_out])
-        versions.append(version)
         trace = trace[jump_out:]
 
-    return parts, versions
+    return parts
 
 
 def fees_from_trace(trace: Iterator[TraceFrame], version: str):
