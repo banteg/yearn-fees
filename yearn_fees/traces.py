@@ -43,19 +43,30 @@ def get_from_trace_033(trace):
     return data
 
 
-def read_from_trace(trace: List[TraceFrame], mapping: List[TraceMapping]):
-    """
-    Recover data from trace frames using trace mappings.
-    """
-    data = {}
-    for source in mapping:
-        frame = next(frame for frame in trace if frame.pc == source.pc)
-        for name, pos in source.stack.items():
-            data[name] = to_int(frame.stack[pos])
-        for name, pos in source.memory.items():
-            data[name] = to_int(frame.memory[pos])
+def split_trace(trace, reports):
+    parts = []
+    versions = []
 
-    return data
+    for report in reports:
+        strategy = Contract(report.strategy)
+        vault = Contract(strategy.vault())
+        version = vault.apiVersion()
+        program_counters = PROGRAM_COUNTERS[version]
+        jump_in = next(
+            i
+            for i, frame in enumerate(trace)
+            if frame.pc == program_counters[0] and frame.op == "JUMPDEST"
+        )
+        jump_out = next(
+            i + 1
+            for i, frame in enumerate(trace[jump_in:], jump_in)
+            if frame.pc == program_counters[-1] and frame.op == "JUMP"
+        )
+        parts.append(trace[jump_in:jump_out])
+        versions.append(version)
+        trace = trace[jump_out:]
+
+    return parts, versions
 
 
 def fees_from_trace(trace: Iterator[TraceFrame], version: str):
