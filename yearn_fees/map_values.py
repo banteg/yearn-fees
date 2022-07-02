@@ -13,7 +13,7 @@ from rich.progress import Progress
 from rich.table import Table
 
 from yearn_fees.fees import assess_fees
-from yearn_fees.memory_layout import MEMORY_LAYOUT, PROGRAM_COUNTERS
+from yearn_fees.memory_layout import MEMORY_LAYOUT, PROGRAM_COUNTERS, MemoryLayout
 from yearn_fees.types import Fees
 from yearn_fees.vault_utils import (
     get_endorsed_vaults,
@@ -107,7 +107,7 @@ def found_to_guess(found):
 def find_value(trace, value):
     print(f"[bold green]find value: {value}")
     if value == 0:
-        print('[red]refusing to search for zero')
+        print("[red]refusing to search for zero")
         return
     for frame in trace:
         for i, item in enumerate(frame.memory):
@@ -128,34 +128,19 @@ def map_tx(tx, vault=None):
 
 def display_trace(trace: List[TraceFrame], version, fees):
     highlight_values = set(fees.dict().values()) | {fees.governance_fee, fees.total_fee}
-    mem_pos = MEMORY_LAYOUT[version]["_assessFees"]
-    program_counters = PROGRAM_COUNTERS[version]
 
-    table = Table()
-    table.add_column("pc", justify="right")
-    table.add_column("op")
-    for name in mem_pos:
-        table.add_column(name, justify="right")
+    layout = MemoryLayout(trace, version)
+    layout.display(highlight_values, console)
 
-    for i, frame in enumerate(trace):
-        if frame.pc not in program_counters:
-            continue
-        row = [str(frame.pc), frame.op]
-        for name, pos in mem_pos.items():
-            try:
-                value = to_int(frame.memory[pos])
-                style = "[bold yellow]" if value in highlight_values else ""
-                row.append(f"{style}{value}")
-            except IndexError:
-                row.append("[dim](unallocated)")
-
-        table.add_row(*row)
-
-    console.print(table)
-
-    for required_param in ['management_fee', 'performance_fee', 'strategist_fee', 'gain', 'duration']:
-        if required_param not in mem_pos:
-            print(f'find {required_param}')
+    for required_param in [
+        "management_fee",
+        "performance_fee",
+        "strategist_fee",
+        "gain",
+        "duration",
+    ]:
+        if required_param not in layout._memory_layout["_assessFees"]:
+            print(f"find {required_param}")
             find_value(trace, getattr(fees, required_param))
 
 

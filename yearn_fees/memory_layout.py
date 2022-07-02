@@ -2,6 +2,8 @@ from typing import List
 from eth_utils import to_int
 
 from evm_trace import TraceFrame
+from rich.table import Table
+from rich.console import Console
 
 # fmt: off
 # output by a modified vyper compiler
@@ -39,14 +41,48 @@ class MemoryLayout(dict):
     """
     Pivots a trace to (pc -> name -> memory value).
     """
+
     def __init__(self, trace: List[TraceFrame], version: str):
+        self._memory_layout = MEMORY_LAYOUT[version]
+        self._program_coutners = PROGRAM_COUNTERS[version]
+
         for frame in trace:
-            if frame.pc not in PROGRAM_COUNTERS[version]:
+            if frame.pc not in self._program_coutners:
                 continue
-            self[frame.pc] = {}
-            for fn, positions in MEMORY_LAYOUT[version].items():
+            self[frame.pc] = {"op": frame.op}
+            for fn, positions in self._memory_layout.items():
                 for name, pos in positions.items():
                     try:
                         self[frame.pc][name] = to_int(frame.memory[pos])
                     except IndexError:
                         self[frame.pc][name] = None
+
+    def display(self, highlight_values=None, console=None):
+        """
+        Display memory layout as a table.
+        """
+        table = Table()
+        table.add_column("pc", justify="right")
+        table.add_column("op")
+
+        for fn, positions in self._memory_layout:
+            for name in positions:
+                table.add_column(name, justify="right")
+
+        for pc, layout in self.items():
+            row = [f"{pc}", f'{layout["op"]}']
+            for name, value in layout.items():
+                if name == "op":
+                    continue
+                if value is None:
+                    row.append(f"[dim](unallocated)")
+                else:
+                    style = f"[bold yellow]" if value in highlight_values else ""
+                    row.append(f"{style}{value}")
+
+            table.add_row(*row)
+
+        if console is None:
+            console = Console()
+
+        console.print(table)
