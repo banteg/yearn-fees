@@ -1,18 +1,18 @@
 from collections import defaultdict
+from functools import lru_cache
 from operator import attrgetter
 from typing import Iterable, List, Optional, Tuple
-from ape import chain, Contract, convert
-from ape.types import AddressType
-from ape.contracts import ContractInstance, ContractLog
-from evm_trace import TraceFrame
-from functools import lru_cache
-from yearn_fees.cache import cache
-from toolz import groupby, concat
 
-from yearn_fees.types import AsofDict, FeeHistory, FeeConfiguration
+from ape import Contract, chain, convert
+from ape.contracts import ContractInstance, ContractLog
+from ape.types import AddressType
+from toolz import concat, groupby, unique
+
+from yearn_fees.cache import cache
+from yearn_fees.types import AsofDict, FeeConfiguration, FeeHistory
 
 # sort key for logs/events
-LOG_KEY = attrgetter("block_number", "index")
+LOG_KEY = attrgetter("block_number", "log_index")
 
 
 def get_range():
@@ -47,6 +47,7 @@ def _get_reports(vault: str):
     return list(vault.StrategyReported.range(*get_range()))
 
 
+@cache.memoize()
 def fetch_all_reports() -> List[ContractLog]:
     """
     Fetch all StrategyReported events for all endorsed vaults.
@@ -76,6 +77,7 @@ def get_reports(vault: ContractInstance, only_profitable=False) -> Iterable[Cont
         reports = [log for log in reports if log.gain > 0]
 
     return reports
+
 
 def get_reports_with_non_matching_params(vault: ContractInstance) -> Iterable[ContractLog]:
     reports = _get_reports(vault.address)
@@ -132,27 +134,7 @@ def get_fee_config_at_report(report: ContractLog, vault: Optional[str] = None) -
     if vault is None:
         vault = strategy.vault()
     fee_conifg = get_vault_fee_config(vault)
-    return fee_conifg.fees_at((report.block_number, report.index), report.strategy)
-
-
-def how_many_harvests():
-    vaults = _get_vaults()
-    selectors = []
-    for version in vaults:
-        vault = Contract(vaults[version][0])
-        seen = {item.selector for item in selectors}
-        if vault.StrategyReported.abi.selector not in seen:
-            selectors.append(vault.StrategyReported.abi)
-
-    all_vaults = list(concat(vaults.values()))
-    logs = chain.provider.get_contract_logs(
-        address=all_vaults,
-        abi=selectors,
-        start_block=0,
-        stop_block=chain.blocks.height,
-        block_page_size=1_000_000,
-    )
-    return len(list(logs))
+    return fee_conifg.fees_at((report.block_number, report.log_index), report.strategy)
 
 
 @cache.memoize()
