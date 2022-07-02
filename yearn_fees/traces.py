@@ -71,7 +71,7 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
         data = layout[21324]
     elif version == "0.3.5":
         data = layout[21546]
-        data["duration"] = extract_from_stack(trace, 20506, 4)
+        data["duration"] = extract_from_stack(trace, 20516, 5)
     else:
         raise NotImplementedError("unsupported version", version)
 
