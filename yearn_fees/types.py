@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.table import Table
 from eth_utils.humanize import humanize_seconds
 from toolz import last
+from ape.contracts import ContractLog
 
 
 class AsofDict(dict):
@@ -98,9 +99,12 @@ class FeeHistory(BaseModel):
     performance_fee: AsofDict[LogPosition, int]
     strategist_fee: Dict[str, AsofDict[LogPosition, int]]
 
-    def fees_at(self, pos: LogPosition, strategy: str):
+    def at_pos(self, pos: LogPosition, strategy: str):
         return FeeConfiguration(
             management_fee=self.management_fee[pos],
             performance_fee=self.performance_fee[pos],
             strategist_fee=self.strategist_fee[strategy][pos],
         )
+
+    def at_report(self, report: ContractLog):
+        return self.at_pos((report.block_number, report.log_index), report.strategy)
