@@ -156,7 +156,9 @@ def get_report_from_tx(tx, vault=None) -> Tuple[ContractInstance, ContractLog]:
     receipt = chain.provider.get_transaction(tx)
     if vault is None:
         receipt_addresses = {log["address"] for log in receipt.logs}
-        vault = next(v for v in get_endorsed_vaults() if v in receipt_addresses)
+        vault = set(get_endorsed_vaults(flat=True)) & receipt_addresses
+        assert len(vault) == 1, f'multiple harvests: {len(vault)}'
+        vault = vault.pop()
 
     vault = Contract(vault)
     report = next(vault.StrategyReported.from_receipt(receipt))
