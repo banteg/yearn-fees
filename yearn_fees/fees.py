@@ -15,6 +15,7 @@ def assess_fees(report: ContractLog) -> Fees:
     pre_height = report.block_number - 1
     version = Version(vault.apiVersion())
 
+    duration = 0
     if version >= Version("0.4.0"):
         # 0.4.0 disallow harvesting the strategy twice in a block
         a = vault.strategies(strategy, height=pre_height)
@@ -23,16 +24,17 @@ def assess_fees(report: ContractLog) -> Fees:
     elif version >= Version("0.3.5"):
         # the duration would be zero after the first harvest of the same strategy in the block
         block_reports = reports_from_block(report.block_number, strategy=vault.address)
-        a = vault.strategies(strategy, height=pre_height)
-        b = vault.strategies(strategy, height=report.block_number)
-        # 0.4.0 asserts duration is non-zero
-        duration = b.lastReport - a.lastReport if block_reports.index(report) == 0 else 0
+        if block_reports.index(report) == 0:
+            a = vault.strategies(strategy, height=pre_height)
+            b = vault.strategies(strategy, height=report.block_number)
+            duration = b.lastReport - a.lastReport
     else:
         # the duration would be zero after the first harvest of the same vault in the block
         block_reports = reports_from_block(report.block_number, vault=vault.address)
-        b = vault.lastReport(height=report.block_number)
-        a = vault.lastReport(height=pre_height)
-        duration = b - a if block_reports.index(report) == 0 else 0
+        if block_reports.index(report) == 0:
+            b = vault.lastReport(height=report.block_number)
+            a = vault.lastReport(height=pre_height)
+            duration = b - a
 
     # 0.3.3 year changed from 365.25 to 365.2425 days
     if version >= Version("0.3.3"):
