@@ -3,7 +3,7 @@ from ape.contracts import ContractInstance, ContractLog
 from semantic_version import Version
 
 from yearn_fees.types import Fees
-from yearn_fees.vault_utils import get_fee_config_at_report
+from yearn_fees.vault_utils import get_fee_config_at_report, reports_from_block, reports_from_tx
 
 
 def assess_fees(report: ContractLog) -> Fees:
@@ -15,16 +15,24 @@ def assess_fees(report: ContractLog) -> Fees:
     pre_height = report.block_number - 1
     version = Version(vault.apiVersion())
 
-    if version >= Version("0.3.5"):
-        # would be inaccurate if multiple harvests of the same strategy happened in the same block
+    if version >= Version("0.4.0"):
+        # 0.4.0 disallow harvesting the strategy twice in a block
+        a = vault.strategies(strategy, height=pre_height)
+        b = vault.strategies(strategy, height=report.block_number)
+        duration = b.lastReport - a.lastReport
+    elif version >= Version("0.3.5"):
+        # the duration would be zero after the first harvest of the same strategy in the block
+        block_reports = reports_from_block(report.block_number, strategy=vault.address)
         a = vault.strategies(strategy, height=pre_height)
         b = vault.strategies(strategy, height=report.block_number)
         # 0.4.0 asserts duration is non-zero
-        duration = b.lastReport - a.lastReport
+        duration = b.lastReport - a.lastReport if block_reports.index(report) == 0 else 0
     else:
+        # the duration would be zero after the first harvest of the same vault in the block
+        block_reports = reports_from_block(report.block_number, vault=vault.address)
         b = vault.lastReport(height=report.block_number)
         a = vault.lastReport(height=pre_height)
-        duration = b - a
+        duration = b - a if block_reports.index(report) == 0 else 0
 
     # 0.3.3 year changed from 365.25 to 365.2425 days
     if version >= Version("0.3.3"):

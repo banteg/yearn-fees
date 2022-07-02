@@ -205,16 +205,18 @@ def get_trace(tx):
 
 
 @cache.memoize()
-def reports_from_tx(tx, vault=None, strategy=None) -> List[ContractLog]:
-    """
-    Get all reports from tx, optionally filtering by vault or strategy.
-    """
+def reports_from_tx(tx) -> List[ContractLog]:
     logs = []
     receipt = chain.provider.get_transaction(tx)
     for event in vault_selectors("StrategyReported"):
         logs.extend(receipt.decode_logs(event))
 
     reports = sorted(logs, key=LOG_KEY)
+    return reports
+
+
+def reports_from_block(block_number, vault=None, strategy=None) -> List[ContractLog]:
+    reports = [log for log in get_reports() if log.block_number == block_number]
     if vault:
         reports = [log for log in reports if log.contract_address == vault]
     if strategy:
