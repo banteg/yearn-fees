@@ -20,7 +20,6 @@ from yearn_fees.vault_utils import (
     get_fee_config_at_report,
     get_report_from_tx,
     get_reports,
-    get_reports_with_non_matching_params,
     get_trace,
 )
 
@@ -107,6 +106,9 @@ def found_to_guess(found):
 
 def find_value(trace, value):
     print(f"[bold green]find value: {value}")
+    if value == 0:
+        print('[red]refusing to search for zero')
+        return
     for frame in trace:
         for i, item in enumerate(frame.memory):
             if to_int(item) == value:
@@ -151,8 +153,10 @@ def display_trace(trace: List[TraceFrame], version, fees):
 
     console.print(table)
 
-    if "duration" not in mem_pos:
-        find_value(trace, fees.duration)
+    for required_param in ['management_fee', 'performance_fee', 'strategist_fee', 'gain', 'duration']:
+        if required_param not in mem_pos:
+            print(f'find {required_param}')
+            find_value(trace, getattr(fees, required_param))
 
 
 @cli.command("display_mapped")
@@ -164,7 +168,7 @@ def mapped(version):
 
     for vault in vaults:
         vault = Contract(vault)
-        reports = list(get_reports_with_non_matching_params(vault))
+        reports = list(get_reports(vault=vault, only_profitable=True, non_matching_fees=True))
         if len(reports) > 1:
             reports = random.sample(reports, 1)
 
