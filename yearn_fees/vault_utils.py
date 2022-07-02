@@ -82,7 +82,7 @@ def get_reports(
     if only_profitable:
         reports = [log for log in reports if log.gain > 0]
 
-    if not vault and non_matching_fee:
+    if not vault and non_matching_fees:
         raise NotImplementedError("add a cached strategy to vault mapping first")
 
     if non_matching_fees:
