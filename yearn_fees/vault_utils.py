@@ -56,8 +56,10 @@ def vault_selectors(event_name):
     """
     each_version = [Contract(vaults[0]) for vaults in get_vaults_by_version().values()]
     return list(
-        unique(getattr(vault, event_name).abi for vault in each_version),
-        key=lambda abi: abi.selector,
+        unique(
+            (getattr(vault, event_name).abi for vault in each_version),
+            key=lambda abi: abi.selector,
+        )
     )
 
 
