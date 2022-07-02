@@ -1,18 +1,14 @@
 import random
-from collections import defaultdict
-from typing import List, Literal
+from typing import List
 
 import click
 from ape import Contract
 from eth_utils import to_int
 from evm_trace import TraceFrame
-from pydantic import BaseModel
 from rich import print
-from rich.table import Table
 
 from yearn_fees.fees import assess_fees
 from yearn_fees.memory_layout import MemoryLayout
-from yearn_fees.types import Fees
 from yearn_fees.vault_utils import (
     get_endorsed_vaults,
     get_fee_config_at_report,
@@ -40,7 +36,7 @@ def display_trace(trace: List[TraceFrame], version, fees):
     highlight_values = set(fees.dict().values()) | {fees.governance_fee, fees.total_fee}
 
     layout = MemoryLayout(trace, version)
-    layout.display(highlight_values, console)
+    layout.display(highlight_values)
 
     for required_param in [
         "management_fee",
