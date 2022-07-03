@@ -87,6 +87,7 @@ def find_duration(version):
     reports = [log for log in reports if log.contract_address in vaults[version]]
     txs = {log.transaction_hash.hex() for log in reports}
     txs = sorted(txs)[:10]
+    i = 0
     results = Counter()
 
     for tx in txs:
@@ -94,7 +95,6 @@ def find_duration(version):
         reports = reports_from_tx(tx)
         raw_trace = get_trace(tx)
         traces = split_trace(raw_trace, reports)
-        i = 0
 
         for report, trace in zip(reports, traces):
             vers = version_from_report(report)
@@ -116,6 +116,6 @@ def find_duration(version):
                 results[res] += 1
 
             for res, num in results.most_common():
-                if num <= (i - 2):
+                if num <= i - 2:
                     continue
                 print(f"({num}) {res}")
