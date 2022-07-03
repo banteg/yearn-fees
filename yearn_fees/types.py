@@ -50,7 +50,7 @@ class Fees(BaseModel):
                 format(Decimal(getattr(self, name)) / 10**decimals, f",.{decimals}f"),
                 format(percentage, ".2%") if name != "gain" else "",
             )
-        if self.duration:
+        if self.duration is not None:
             table.add_row("duration", format(self.duration, ",d"), humanize_seconds(self.duration))
 
         console = Console()
@@ -73,8 +73,8 @@ class Fees(BaseModel):
             )
         table.add_row(
             "duration",
-            format(self.duration, ",d") if self.duration else "--",
-            format(other.duration, ",d") if other.duration else "--",
+            format(self.duration, ",d") if self.duration is not None else "--",
+            format(other.duration, ",d") if other.duration is not None else "--",
             f"[green]✔︎" if self.duration == other.duration else "[red]✘",
         )
 
