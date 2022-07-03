@@ -41,12 +41,12 @@ def split_trace(trace, reports):
         jump_in = next(
             i
             for i, frame in enumerate(trace)
-            if frame.pc == program_counters[0] and frame.op == "JUMPDEST"
+            if frame.pc == program_counters[0] and "JUMP" in frame.op  # JUMPDEST
         )
         jump_out = next(
             i + 1
             for i, frame in enumerate(trace[jump_in:], jump_in)
-            if frame.pc == program_counters[-1] and frame.op == "JUMP"
+            if frame.pc == program_counters[-1] and "JUMP" in frame.op  # JUMP
         )
         parts.append(trace[jump_in:jump_out])
         trace = trace[jump_out:]
