@@ -1,13 +1,11 @@
-from asyncio import selector_events
+import random
 from collections import defaultdict
 from functools import lru_cache
 from operator import attrgetter
-import random
-from re import L
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from ape import Contract, chain, convert
-from ape.contracts import ContractInstance, ContractLog
+from ape.contracts import ContractLog
 from ape.types import AddressType
 from toolz import concat, groupby, unique, valfilter
 
@@ -140,9 +138,11 @@ def get_sample_txs(version, num_vaults, num_txs):
 
     txs = []
     for vault in random.sample(vaults, num_vaults):
-        vault_txs = list(unique(log.transaction_hash for log in reports if log.contract_address == vault]))
+        vault_txs = list(
+            unique(log.transaction_hash for log in reports if log.contract_address == vault)
+        )
         txs.extend(random.sample(vault_txs, min(num_txs, len(vault_txs))))
-    
+
     return txs
 
 
@@ -219,6 +219,8 @@ def get_fee_config_at_report(report: ContractLog, vault: Optional[str] = None) -
 
 @cache.memoize()
 def get_trace(tx):
+    if isinstance(tx, bytes):
+        tx = tx.hex()
     return list(chain.provider.get_transaction_trace(tx))
 
 
