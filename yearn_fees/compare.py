@@ -6,8 +6,10 @@ from yearn_fees.utils import get_decimals, get_trace, reports_from_tx, version_f
 
 
 def compare_methods(tx, only_version=None):
+    tx = tx.hex() if isinstance(tx, bytes) else tx
     reports = reports_from_tx(tx)
-    print(f"[green]found {len(reports)} reports")
+    print(f"[green]found {len(reports)} reports at {tx}")
+    print(f"versions: {[version_from_report(report) for report in reports]}")
 
     raw_trace = get_trace(tx)
     traces = split_trace(raw_trace, reports)
