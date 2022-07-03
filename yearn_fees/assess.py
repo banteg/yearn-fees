@@ -67,7 +67,7 @@ def assess_fees(report: ContractLog) -> Fees:
 
     MAX_BPS = 10_000
     conf = get_fee_config_at_report(report)
-    print(f"{total_assets=} {duration=}")
+    
     # 0.3.5 is the only verison that uses a precision factor
     if version == Version("0.3.5"):
         prec = 10 ** (18 - vault.decimals())
