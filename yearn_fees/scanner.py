@@ -39,13 +39,7 @@ def display_trace(trace: List[TraceFrame], version, fees):
     )
     layout.display(highlight)
 
-    for required_param in [
-        "management_fee",
-        "performance_fee",
-        "strategist_fee",
-        "gain",
-        "duration",
-    ]:
+    for required_param in ["duration"]:
         if required_param not in layout._memory_layout:
             print(f"find {required_param}")
             find_value(trace, getattr(fees, required_param))
