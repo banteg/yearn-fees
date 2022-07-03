@@ -116,4 +116,6 @@ def find_duration(version):
                 results[res] += 1
 
             for res, num in results.most_common():
+                if num <= i - 2:
+                    continue
                 print(f"({num}) {res}")
