@@ -3,7 +3,7 @@ from ape.contracts import ContractInstance, ContractLog
 from semantic_version import Version
 
 from yearn_fees.types import Fees
-from yearn_fees.vault_utils import get_fee_config_at_report, reports_from_block, reports_from_tx
+from yearn_fees.utils import get_fee_config_at_report, reports_from_block, reports_from_tx
 
 
 def assess_fees(report: ContractLog) -> Fees:

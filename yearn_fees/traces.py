@@ -6,7 +6,7 @@ from semantic_version import Version
 
 from yearn_fees.memory_layout import PROGRAM_COUNTERS, MemoryLayout
 from yearn_fees.types import Fees
-from yearn_fees.vault_utils import version_from_report
+from yearn_fees.utils import version_from_report
 
 
 def get_from_trace_033(trace):

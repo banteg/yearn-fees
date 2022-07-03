@@ -9,9 +9,9 @@ import click
 from ape import chain, networks
 
 from yearn_fees.compare import compare_methods
-from yearn_fees.map_values import layout_tx
 from yearn_fees.memory_layout import MEMORY_LAYOUT
-from yearn_fees.vault_utils import get_sample_txs
+from yearn_fees.scanner import layout_tx
+from yearn_fees.utils import get_sample_txs
 
 
 class MainnetCommand(click.Command):
