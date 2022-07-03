@@ -5,7 +5,7 @@ from evm_trace import TraceFrame
 from rich import print
 from semantic_version import Version
 
-from yearn_fees.memory_layout import PROGRAM_COUNTERS, MemoryLayout
+from yearn_fees.memory_layout import EARLY_EXIT, PROGRAM_COUNTERS, MemoryLayout
 from yearn_fees.types import Fees
 from yearn_fees.utils import version_from_report
 
@@ -44,10 +44,13 @@ def split_trace(trace, reports):
             for i, frame in enumerate(trace)
             if frame.pc == program_counters[0] and frame.op == "JUMPDEST"
         )
+        out_pcs = [program_counters[-1]]
+        if version in EARLY_EXIT:
+            out_pcs.append(EARLY_EXIT[version])
         jump_out = next(
             i + 1
             for i, frame in enumerate(trace[jump_in:], jump_in)
-            if frame.pc == program_counters[-1] and frame.op == "JUMP"
+            if frame.pc in out_pcs and frame.op == "JUMP"
         )
         parts.append(trace[jump_in:jump_out])
         print(f"append part ({len(parts[-1])} frames)")
@@ -68,9 +71,15 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
     """
     layout = MemoryLayout(trace, version)
     if version == "0.4.3":
-        data = layout[21195]
+        try:
+            data = layout[21195]
+        except KeyError:
+            data = {"duration": layout[20312]["duration"]}
     elif version == "0.4.2":
-        data = layout[21324]
+        try:
+            data = layout[21324]
+        except KeyError:
+            data = {"duration": layout[20441]["duration"]}
     elif version == "0.3.5":
         data = layout[21546]
         data["duration"] = extract_from_stack(trace, 20516, 5)
