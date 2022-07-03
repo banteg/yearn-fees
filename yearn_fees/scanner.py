@@ -4,7 +4,7 @@ from eth_utils import to_int
 from evm_trace import TraceFrame
 from rich import print
 
-from yearn_fees.fees import assess_fees
+from yearn_fees.assess import assess_fees
 from yearn_fees.memory_layout import MemoryLayout
 from yearn_fees.traces import split_trace
 from yearn_fees.utils import (

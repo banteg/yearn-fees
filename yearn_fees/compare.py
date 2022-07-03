@@ -1,6 +1,6 @@
 from rich import print
 
-from yearn_fees.fees import assess_fees
+from yearn_fees.assess import assess_fees
 from yearn_fees.traces import fees_from_trace, split_trace
 from yearn_fees.utils import get_decimals, get_trace, reports_from_tx, version_from_report
 
