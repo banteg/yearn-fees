@@ -76,7 +76,7 @@ def find_duration(version):
     vaults = get_vaults_by_version()
     reports = [log for log in reports if log.contract_address in vaults[version]]
     txs = {log.transaction_hash.hex() for log in reports}
-    txs = random.sample(list(txs), min(len(txs), 50))
+    txs = sorted(txs)[:10]
     durations = Counter()
 
     for tx in txs:
