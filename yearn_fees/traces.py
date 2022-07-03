@@ -2,6 +2,7 @@ from typing import List
 
 from eth_utils import to_int
 from evm_trace import TraceFrame
+from rich import print
 from semantic_version import Version
 
 from yearn_fees.memory_layout import PROGRAM_COUNTERS, MemoryLayout
@@ -41,14 +42,15 @@ def split_trace(trace, reports):
         jump_in = next(
             i
             for i, frame in enumerate(trace)
-            if frame.pc == program_counters[0] and "JUMP" in frame.op  # JUMPDEST
+            if frame.pc == program_counters[0] and frame.op == "JUMPDEST"
         )
         jump_out = next(
             i + 1
             for i, frame in enumerate(trace[jump_in:], jump_in)
-            if frame.pc == program_counters[-1] and "JUMP" in frame.op  # JUMP
+            if frame.pc == program_counters[-1] and frame.op == "JUMP"
         )
         parts.append(trace[jump_in:jump_out])
+        print(f"append part ({len(parts[-1])} frames)")
         trace = trace[jump_out:]
 
     return parts
