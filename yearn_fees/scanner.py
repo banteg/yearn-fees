@@ -26,10 +26,10 @@ def find_value(trace, value):
     for frame in trace:
         for i, item in enumerate(frame.memory):
             if to_int(item) == value:
-                results.append((frame.pc, "memory"))
+                results.append((frame.pc, "memory", i))
         for i, item in enumerate(frame.stack):
             if to_int(item) == value:
-                results.append((frame.pc, "stack"))
+                results.append((frame.pc, "stack", i))
     return results
 
 
@@ -101,7 +101,7 @@ def find_duration(version):
                 i += 1
                 durations.update(find_value(trace, fees_assess.duration))
 
-            for (pc, loc), n in durations.most_common():
+            for (pc, loc, index), n in durations.most_common():
                 if n != i:
                     continue
-                print(pc, loc, n)
+                print(f"pc={pc} loc={loc} index={index} [n]")
