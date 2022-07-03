@@ -21,7 +21,8 @@ MEMORY_LAYOUT = {
     '0.4.3': {'_assessFees': {'#internal_0': 12, 'strategy': 10, 'gain': 11, 'duration': 13, 'management_fee': 14, 'strategist_fee': 15, 'performance_fee': 16, 'total_fee': 17}},
 }
 
-# computed from combining source_map and ast outputs
+# computed from combining source_map and ast outputs and manually adjusted
+# first instruction must be JUMPDEST, last instruction must be JUMP
 PROGRAM_COUNTERS = {
     '0.3.0': [15333, 15334, 15370, 15371, 15407, 15412, 15434, 15439, 15464, 15469, 15520, 15565, 15570, 15618, 15623, 15650, 15655, 15666, 15684, 15689, 15712, 15769, 15770, 15822, 15845, 15850, 15867, 15872, 15955, 15956, 15992, 16015, 16094, 16095, 16127, 16128, 16133, 16134],
     '0.3.1': [15410, 15411, 15438, 15443, 15465, 15470, 15495, 15500, 15551, 15596, 15601, 15649, 15654, 15681, 15686, 15697, 15715, 15720, 15743, 15800, 15801, 15853, 15876, 15881, 15898, 15903, 15986, 15987, 16023, 16046, 16125, 16126, 16158, 16159, 16164, 16165],
