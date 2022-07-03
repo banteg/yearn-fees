@@ -99,7 +99,8 @@ def find_duration(version):
             fees_assess.compare(fees_trace, decimals)
             if fees_assess.duration != 0:
                 i += 1
-                durations.update(find_value(trace, fees_assess.duration))
+                for pos in find_value(trace, fees_assess.duration):
+                    durations[pos] += 1
 
             for (pc, loc, index), n in durations.most_common():
                 if n != i:
