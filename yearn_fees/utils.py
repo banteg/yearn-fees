@@ -204,14 +204,13 @@ def get_vault_fee_history(vault: str) -> FeeHistory:
     )
 
 
-def get_fee_config_at_report(report: ContractLog, vault: Optional[str] = None) -> FeeConfiguration:
+def get_fee_config_at_report(report: ContractLog) -> FeeConfiguration:
     """
     A more accurate method to get fee configuration.
     Supports fee adjustments in the same block as report.
     """
     strategy = Contract(report.strategy)
-    if vault is None:
-        vault = strategy.vault()
+    vault = report.contract_address
     fee_conifg = get_vault_fee_history(vault)
 
     return fee_conifg.at_report(report)
