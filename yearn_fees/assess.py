@@ -3,7 +3,7 @@ from ape.contracts import ContractInstance, ContractLog
 from semantic_version import Version
 
 from yearn_fees.types import Fees
-from yearn_fees.utils import get_fee_config_at_report, reports_from_block, reports_from_tx
+from yearn_fees.utils import get_fee_config_at_report, reports_from_block, reports_from_tx, version_from_report
 
 
 def assess_fees(report: ContractLog) -> Fees:
@@ -13,7 +13,7 @@ def assess_fees(report: ContractLog) -> Fees:
     vault = Contract(report.contract_address)
     strategy = Contract(report.strategy)
     pre_height = report.block_number - 1
-    version = Version(vault.apiVersion())
+    version = Version(version_from_report(report))
 
     duration = 0
     if version >= Version("0.4.0"):
