@@ -45,7 +45,7 @@ def display_trace(trace: List[TraceFrame], version, fees):
             find_value(trace, getattr(fees, required_param))
 
 
-def layout_tx(tx):
+def layout_tx(tx, only_version=None):
     reports = reports_from_tx(tx)
     print(f"[green]found {len(reports)} reports")
 
@@ -53,6 +53,9 @@ def layout_tx(tx):
     traces = split_trace(raw_trace, reports)
 
     for report, trace in zip(reports, traces):
+        version = version_from_report(report)
+        if only_version and version != only_version:
+            continue
         print(report.__dict__)
         fees = assess_fees(report)
         print(repr(fees))
@@ -60,5 +63,4 @@ def layout_tx(tx):
         decimals = get_decimals(report.contract_address)
         fees.as_table(decimals, "calculated fees")
 
-        version = version_from_report(report)
         display_trace(trace, version, fees)

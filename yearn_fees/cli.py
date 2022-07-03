@@ -32,9 +32,9 @@ def cli():
 @click.argument("version_or_tx")
 def layout(version_or_tx):
     if version_or_tx in MEMORY_LAYOUT:
-        txs = get_sample_txs(version_or_tx, 3, 3)
+        txs = get_sample_txs(version_or_tx, 10, 5)
         for tx in txs:
-            layout_tx(tx)
+            layout_tx(tx, only_version=version_or_tx)
     else:
         layout_tx(version_or_tx)
 
@@ -43,9 +43,9 @@ def layout(version_or_tx):
 @click.argument("version_or_tx")
 def compare(version_or_tx):
     if version_or_tx in MEMORY_LAYOUT:
-        txs = get_sample_txs(version_or_tx, 3, 3)
+        txs = get_sample_txs(version_or_tx, 10, 5)
         for tx in txs:
-            compare_methods(tx)
+            compare_methods(tx, only_version=version_or_tx)
     else:
         compare_methods(version_or_tx)
 
