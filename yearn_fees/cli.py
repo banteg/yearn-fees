@@ -6,14 +6,16 @@ yearn-fees compare 0.4.3
 yearn-fees compare 0xabc..def
 """
 import json
+
 import click
 from ape import chain, networks
+from eth_utils import to_int
+from rich import print
 
+from yearn_fees import indexer, scanner
 from yearn_fees.compare import compare_methods
 from yearn_fees.memory_layout import MEMORY_LAYOUT
-from yearn_fees.scanner import layout_tx
 from yearn_fees.utils import get_sample_txs, get_trace
-from eth_utils import to_int
 
 
 class MainnetCommand(click.Command):
@@ -34,9 +36,9 @@ def layout(version_or_tx):
     if version_or_tx in MEMORY_LAYOUT:
         txs = get_sample_txs(version_or_tx, 10, 5)
         for tx in txs:
-            layout_tx(tx, only_version=version_or_tx)
+            scanner.layout_tx(tx, only_version=version_or_tx)
     else:
-        layout_tx(version_or_tx)
+        scanner.layout_tx(version_or_tx)
 
 
 @cli.command(cls=MainnetCommand)
@@ -65,8 +67,19 @@ def dump_trace(tx):
     path = f"traces/{tx}.json"
     with open(path, "wt") as f:
         json.dump(data, f, indent=2)
-    
+
     print(path)
+
+
+@cli.command(cls=MainnetCommand)
+def index():
+    indexer.start()
+
+
+@cli.command(cls=MainnetCommand)
+@click.argument("version")
+def find_duration(version):
+    scanner.find_duration(version)
 
 
 if __name__ == "__main__":
