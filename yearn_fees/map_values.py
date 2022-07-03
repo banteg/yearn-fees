@@ -55,30 +55,7 @@ def display_trace(trace: List[TraceFrame], version, fees):
             find_value(trace, getattr(fees, required_param))
 
 
-def display_version(version):
-    vaults = get_endorsed_vaults(version=version)
-    if len(vaults) > 3:
-        vaults = random.sample(vaults, 3)
-
-    for vault in vaults:
-        vault = Contract(vault)
-        reports = get_reports(vault=vault, only_profitable=True, non_matching_fees=True)
-        if len(reports) > 1:
-            reports = random.sample(reports, 1)
-
-        for report in reports:
-            print(report.__dict__)
-            fees = assess_fees(report)
-            decimals = get_decimals(report.contract_address)
-            fees.as_table(decimals, "calculated fees")
-
-            trace = get_trace(report.transaction_hash.hex())
-            display_trace(trace, version, fees)
-
-            print(repr(fees))
-
-
-def display_tx(tx):
+def layout_tx(tx):
     reports = reports_from_tx(tx)
     print(f"[green]found {len(reports)} reports")
 
