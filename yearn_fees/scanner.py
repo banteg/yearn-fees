@@ -89,6 +89,7 @@ def find_duration_from_tx(tx, version=None, quiet=False):
         vers = version_from_report(report)
         if version and vers != version:
             continue
+        print(f'version {vers}')
 
         decimals = get_decimals(report.contract_address)
 
