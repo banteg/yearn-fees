@@ -10,7 +10,6 @@ class Report(db.Entity):
     _table_ = "reports"
     # position
     block_number = Required(int)
-    transaction_index = Required(int)
     transaction_hash = Required(str)
     log_index = Required(int)
     # log
@@ -25,7 +24,7 @@ class Report(db.Entity):
     total_loss = Required(Decimal, sql_type="numeric")
     total_debt = Required(Decimal, sql_type="numeric")
     debt_added = Required(Decimal, sql_type="numeric")
-    debt_ratio = Required(Decimal, sql_type="numeric")
+    debt_ratio = Required(int)
     # fee config
     management_fee_bps = Required(int)
     performance_fee_bps = Required(int)
