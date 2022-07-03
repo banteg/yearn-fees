@@ -21,8 +21,6 @@ def compare_methods(tx):
         fees_calc = assess_fees(report)
         fees_calc.as_table(decimals, title="calculated fees")
 
-        fees_calc.as_table(decimals, "calculated fees")
-
         fees_trace = fees_from_trace(trace, version)
         fees_trace.as_table(decimals, title="trace fees")
 
