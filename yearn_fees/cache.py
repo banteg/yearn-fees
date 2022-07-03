@@ -11,7 +11,9 @@ from humanize import naturalsize
 def timed(label):
     start = perf_counter()
     yield
-    print(f"{label}: {perf_counter() - start:.3f}s")
+    elapsed = perf_counter() - start
+    if elapsed >= 1:
+        print(f"{label}: {elapsed:.3f}s")
 
 
 class CompressedDisk(diskcache.Disk):
@@ -27,11 +29,12 @@ class CompressedDisk(diskcache.Disk):
             if not read:
                 dumped = pickle.dumps(value)
                 value = gzip.compress(dumped)
-                print(
-                    f"pickle={naturalsize(len(dumped))}",
-                    f"gzip={naturalsize(len(value))}",
-                    f"ratio={len(dumped) / len(value):.2f}x",
-                )
+                if len(dumped) > 2 ** 20:
+                    print(
+                        f"pickle={naturalsize(len(dumped))}",
+                        f"gzip={naturalsize(len(value))}",
+                        f"ratio={len(dumped) / len(value):.2f}x",
+                    )
             stored = super().store(value, read, key=key)
         return stored
 
