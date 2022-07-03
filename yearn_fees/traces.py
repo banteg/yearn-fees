@@ -53,7 +53,6 @@ def split_trace(trace, reports):
             if frame.pc in out_pcs and frame.op == "JUMP"
         )
         parts.append(trace[jump_in:jump_out])
-        print(f"append part ({len(parts[-1])} frames)")
         trace = trace[jump_out:]
 
     return parts
