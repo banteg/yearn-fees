@@ -35,6 +35,11 @@ def assess_fees(report: ContractLog) -> Fees:
             b = vault.lastReport(height=report.block_number)
             a = vault.lastReport(height=pre_height)
             duration = b - a
+    
+    # 0.4.0 no fees are charged if there was no gain
+    if version >= Version("0.4.0"):
+        if report.gain == 0:
+            return Fees(duration=duration)
 
     # 0.3.3 year changed from 365.25 to 365.2425 days
     if version >= Version("0.3.3"):
@@ -42,10 +47,6 @@ def assess_fees(report: ContractLog) -> Fees:
     else:
         SECS_PER_YEAR = 31_557_600
 
-    # 0.4.0 no fees are charged if there was no gain
-    if version >= Version("0.4.0"):
-        if report.gain == 0:
-            return {}
     # 0.3.5 read total debt and delegated assets from strategy
     if version >= Version("0.3.5"):
         total_debt = vault.strategies(strategy, height=pre_height).totalDebt

@@ -23,11 +23,11 @@ class AsofDict(dict):
 
 
 class Fees(BaseModel):
-    management_fee: int
-    performance_fee: int
-    strategist_fee: int
-    gain: Optional[int]
-    duration: Optional[int]
+    management_fee: int = 0
+    performance_fee: int = 0
+    strategist_fee: int = 0
+    gain: int = 0
+    duration: int = 0
 
     @property
     def governance_fee(self):
