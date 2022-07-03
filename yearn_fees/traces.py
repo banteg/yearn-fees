@@ -79,7 +79,11 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
         data["management_fee"] = layout[19835]["governance_fee"]
         data["performance_fee"] = layout[19846]["governance_fee"] - data["management_fee"]
         data["duration"] = extract_from_stack(trace, 19620, 2)
-
+    elif version == "0.3.2":
+        data = layout[17731]
+        data["management_fee"] = layout[17264]["governance_fee"]
+        data["performance_fee"] = layout[17253]["governance_fee"] - data["management_fee"]
+        data["duration"] = extract_from_stack(trace, 17042, 2)
     else:
         raise NotImplementedError("unsupported version", version)
 
