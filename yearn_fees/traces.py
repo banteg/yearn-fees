@@ -58,9 +58,16 @@ def split_trace(trace, reports):
     return parts
 
 
-def extract_from_stack(trace, pc, pos):
-    frame = next(frame for frame in trace if frame.pc == pc)
-    return to_int(frame.stack[pos])
+def extract_from_stack(trace, positions: List):
+    """
+    positions is a list of [pc, index]
+    """
+    for pc, index in positions:
+        try:
+            frame = next(frame for frame in trace if frame.pc == pc)
+            return to_int(frame.stack[index])
+        except StopIteration:
+            pass
 
 
 def fees_from_trace(trace: List[TraceFrame], version: str):
@@ -81,7 +88,7 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
             data = {"duration": layout[20441]["duration"]}
     elif version == "0.3.5":
         data = layout[21546]
-        data["duration"] = extract_from_stack(trace, 20516, 5)
+        data["duration"] = extract_from_stack(trace, [[20516, 5]])
     elif version == "0.3.3":
         data = layout[20312]
         try:
@@ -90,22 +97,22 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
         except KeyError:
             data["management_fee"] = 0
             data["performance_fee"] = 0
-        data["duration"] = extract_from_stack(trace, 19620, 2)
+        data["duration"] = extract_from_stack(trace, [[19620, 2]])
     elif version == "0.3.2":
         data = layout[17731]
         data["management_fee"] = layout[17253]["governance_fee"]
         data["performance_fee"] = layout[17264]["governance_fee"] - data["management_fee"]
-        data["duration"] = extract_from_stack(trace, 17042, 2)
+        data["duration"] = extract_from_stack(trace, [[9017, 2], [17014, 2]])
     elif version == "0.3.1":
         data = layout[16164]
         data["management_fee"] = layout[15686]["governance_fee"]
         data["performance_fee"] = layout[15697]["governance_fee"] - data["management_fee"]
-        data["duration"] = extract_from_stack(trace, 15475, 2)
+        data["duration"] = extract_from_stack(trace, [[15475, 2]])
     elif version == "0.3.0":
         data = layout[16133]
         data["management_fee"] = layout[15655]["governance_fee"]
         data["performance_fee"] = layout[15666]["governance_fee"] - data["management_fee"]
-        data["duration"] = extract_from_stack(trace, 15444, 2)
+        data["duration"] = extract_from_stack(trace, [[15444, 2]])
     else:
         raise NotImplementedError("unsupported version", version)
 
