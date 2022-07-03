@@ -1,9 +1,10 @@
-from collections import Counter
 import random
-from typing import List
+from collections import Counter
+from typing import List, Literal
 
 from eth_utils import to_int
 from evm_trace import TraceFrame
+from pydantic import BaseModel
 from rich import print
 
 from yearn_fees.assess import assess_fees
@@ -19,18 +20,27 @@ from yearn_fees.utils import (
 )
 
 
-def find_value(trace, value):
-    results = []
+class MatchedValue(BaseModel):
+    loc: Literal["stack", "memory"]
+    pc: int
+    index: int
+
+    class Config:
+        frozen = True
+
+
+def find_value(trace, value) -> List[MatchedValue]:
+    results = Counter()
     if value == 0:
         return results
     for frame in trace:
-        for i, item in enumerate(frame.memory):
-            if to_int(item) == value:
-                results.append((frame.pc, "memory", i))
-        for i, item in enumerate(frame.stack):
-            if to_int(item) == value:
-                results.append((frame.pc, "stack", i))
-    return results
+        for loc in ["stack", "memory"]:
+            for index, item in enumerate(getattr(frame, loc)):
+                if to_int(item) == value:
+                    results[MatchedValue(loc=loc, pc=frame.pc, index=index)] += 1
+
+    # we are not interested in ambigous values
+    return [res for res in results if results[res] == 1]
 
 
 def display_trace(trace: List[TraceFrame], version, fees):
@@ -77,7 +87,7 @@ def find_duration(version):
     reports = [log for log in reports if log.contract_address in vaults[version]]
     txs = {log.transaction_hash.hex() for log in reports}
     txs = sorted(txs)[:10]
-    durations = Counter()
+    results = Counter()
 
     for tx in txs:
         print(f"[green]{tx}")
@@ -94,15 +104,16 @@ def find_duration(version):
             decimals = get_decimals(report.contract_address)
 
             fees_assess = assess_fees(report)
+            duration = fees_assess.duration
+            if duration == 0:
+                continue
 
             fees_trace = fees_from_trace(trace, vers)
             fees_assess.compare(fees_trace, decimals)
-            if fees_assess.duration != 0:
-                i += 1
-                for pos in find_value(trace, fees_assess.duration):
-                    durations[pos] += 1
 
-            for (pc, loc, index), n in durations.most_common():
-                if n != i:
-                    continue
-                print(f"pc={pc} loc={loc} index={index} [{n}]")
+            i += 1
+            for res in find_value(trace, duration):
+                results[res] += 1
+
+            for res, num in results.most_common():
+                print(f"({num}) {res}")
