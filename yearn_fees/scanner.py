@@ -104,4 +104,4 @@ def find_duration(version):
             for (pc, loc, index), n in durations.most_common():
                 if n != i:
                     continue
-                print(f"pc={pc} loc={loc} index={index} [n]")
+                print(f"pc={pc} loc={loc} index={index} [{n}]")
