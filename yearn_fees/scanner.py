@@ -1,3 +1,5 @@
+from itertools import groupby
+from operator import attrgetter
 import random
 from collections import Counter
 from typing import List, Literal
@@ -18,6 +20,7 @@ from yearn_fees.utils import (
     reports_from_tx,
     version_from_report,
 )
+from toolz import unique
 
 
 class MatchedValue(BaseModel):
@@ -30,17 +33,21 @@ class MatchedValue(BaseModel):
 
 
 def find_value(trace, value) -> List[MatchedValue]:
-    results = Counter()
+    results = []
     if value == 0:
         return results
+    # drop frames with a repeating program counter
+    counts = Counter(frame.pc for frame in trace)
+
     for frame in trace:
+        if counts[frame.pc] > 1:
+            continue
         for loc in ["stack", "memory"]:
             for index, item in enumerate(getattr(frame, loc)):
                 if to_int(item) == value:
-                    results[MatchedValue(loc=loc, pc=frame.pc, index=index)] += 1
+                    results.append(MatchedValue(loc=loc, pc=frame.pc, index=index))
 
-    # we are not interested in ambigous values
-    return [res for res in results if results[res] == 1]
+    return results
 
 
 def display_trace(trace: List[TraceFrame], version, fees):
@@ -89,7 +96,7 @@ def find_duration_from_tx(tx, version=None, quiet=False):
         vers = version_from_report(report)
         if version and vers != version:
             continue
-        print(f'version {vers}')
+        print(f"version {vers}")
 
         decimals = get_decimals(report.contract_address)
 
@@ -123,7 +130,7 @@ def find_duration(version, tx=None):
     results = Counter()
 
     for tx in txs:
-        results += find_duration_from_tx(tx, version, quiet=True)
+        results.update(find_duration_from_tx(tx, version, quiet=True))
 
     best = max(results.values())
     for res, num in results.most_common():
