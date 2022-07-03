@@ -74,7 +74,7 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
         try:
             data = layout[21195]
         except KeyError:
-            data = {"duration": layout[20312]["duration"]}
+            data = {"duration": layout[20284]["duration"]}
     elif version == "0.4.2":
         try:
             data = layout[21324]
