@@ -13,6 +13,7 @@ from eth_utils import to_int
 from rich import print
 
 from yearn_fees import indexer, scanner
+from yearn_fees.assess import assess_fees
 from yearn_fees.compare import compare_methods
 from yearn_fees.memory_layout import MEMORY_LAYOUT
 from yearn_fees.utils import get_sample_txs, get_trace
@@ -77,9 +78,14 @@ def index():
 
 
 @cli.command(cls=MainnetCommand)
-@click.argument("version")
-def find_duration(version):
-    scanner.find_duration(version)
+@click.argument("version_or_tx")
+def find_duration(version_or_tx):
+    if version_or_tx in MEMORY_LAYOUT:
+        version = version_or_tx
+        scanner.find_duration(version)
+    else:
+        tx = version_or_tx
+        scanner.find_duration_from_tx(tx)
 
 
 if __name__ == "__main__":

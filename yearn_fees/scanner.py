@@ -78,7 +78,39 @@ def layout_tx(tx, only_version=None):
         display_trace(trace, version, fees)
 
 
-def find_duration(version):
+def find_duration_from_tx(tx, version=None, quiet=False):
+    print(f"[green]{tx}")
+    reports = reports_from_tx(tx)
+    raw_trace = get_trace(tx)
+    traces = split_trace(raw_trace, reports)
+    results = Counter()
+
+    for report, trace in zip(reports, traces):
+        vers = version_from_report(report)
+        if version and vers != version:
+            continue
+
+        decimals = get_decimals(report.contract_address)
+
+        fees_assess = assess_fees(report)
+        duration = fees_assess.duration
+        if duration == 0:
+            continue
+
+        fees_trace = fees_from_trace(trace, vers)
+        fees_assess.compare(fees_trace, decimals)
+
+        for res in find_value(trace, duration):
+            results[res] += 1
+
+    if not quiet:
+        for res, num in results.most_common():
+            print(f"({num}) {res}")
+
+    return results
+
+
+def find_duration(version, tx=None):
     """
     Find non-ambiguous program counters where duration is in memory or on stack.
     """
@@ -87,35 +119,13 @@ def find_duration(version):
     reports = [log for log in reports if log.contract_address in vaults[version]]
     txs = {log.transaction_hash.hex() for log in reports}
     txs = sorted(txs)[:10]
-    i = 0
     results = Counter()
 
     for tx in txs:
-        print(f"[green]{tx}")
-        reports = reports_from_tx(tx)
-        raw_trace = get_trace(tx)
-        traces = split_trace(raw_trace, reports)
+        results += find_duration_from_tx(tx, version, quiet=True)
 
-        for report, trace in zip(reports, traces):
-            vers = version_from_report(report)
-            if vers != version:
-                continue
-
-            decimals = get_decimals(report.contract_address)
-
-            fees_assess = assess_fees(report)
-            duration = fees_assess.duration
-            if duration == 0:
-                continue
-
-            fees_trace = fees_from_trace(trace, vers)
-            fees_assess.compare(fees_trace, decimals)
-
-            i += 1
-            for res in find_value(trace, duration):
-                results[res] += 1
-
-            for res, num in results.most_common():
-                if num <= i - 2:
-                    continue
-                print(f"({num}) {res}")
+    best = max(results.values())
+    for res, num in results.most_common():
+        if num <= best - 2:
+            continue
+        print(f"({num}) {res}")
