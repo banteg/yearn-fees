@@ -7,7 +7,9 @@ from typing import Dict, List, Optional
 from ape import Contract, chain, convert
 from ape.contracts import ContractLog
 from ape.types import AddressType
+from evm_trace import TraceFrame
 from toolz import concat, groupby, unique, valfilter
+from yearn_fees import traces
 
 from yearn_fees.cache import cache
 from yearn_fees.types import AsofDict, FeeConfiguration, FeeHistory
@@ -221,6 +223,15 @@ def get_trace(tx):
     if isinstance(tx, bytes):
         tx = tx.hex()
     return list(chain.provider.get_transaction_trace(tx))
+
+
+@cache.memoize()
+def get_split_trace(tx) -> List[List[TraceFrame]]:
+    if isinstance(tx, bytes):
+        tx = tx.hex()
+    trace = list(chain.provider.get_transaction_trace(tx))
+    reports = reports_from_tx(tx)
+    return traces.split_trace(trace, reports)
 
 
 @cache.memoize()
