@@ -244,7 +244,6 @@ def get_trace(tx) -> Trace:
     return _get_trace(tx)
 
 
-@cache.memoize()
 def get_split_trace(tx) -> List[Trace]:
     if isinstance(tx, bytes):
         tx = tx.hex()
