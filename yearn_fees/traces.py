@@ -66,7 +66,7 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
 
     elif version == "0.3.5":
         data = layout[21546]
-        data["duration"] = extract_from_stack(trace, 20516, 5)
+        # no accurate way to get duration for 0.3.5
 
     elif version == "0.3.3":
         data = layout[20312]
@@ -76,7 +76,7 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
         except KeyError:
             data["management_fee"] = 0
             data["performance_fee"] = 0
-        data["duration"] = extract_from_stack(trace, 19596, 4)
+        # no accurate way to get duration for 0.3.3
 
     elif version == "0.3.2":
         data = layout[17731]
