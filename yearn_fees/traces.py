@@ -6,7 +6,7 @@ from semantic_version import Version
 
 from yearn_fees.memory_layout import EARLY_EXIT, PROGRAM_COUNTERS, MemoryLayout
 from yearn_fees.types import Fees
-from yearn_fees.utils import version_from_report
+from yearn_fees import utils
 
 
 def split_trace(trace, reports):
@@ -16,7 +16,7 @@ def split_trace(trace, reports):
     parts = []
 
     for report in reports:
-        version = version_from_report(report)
+        version = utils.version_from_report(report)
         program_counters = PROGRAM_COUNTERS[version]
         jump_in = next(
             i
