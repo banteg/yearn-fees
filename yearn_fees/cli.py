@@ -57,17 +57,10 @@ def compare(version_or_tx):
 @click.argument("tx")
 def dump_trace(tx):
     trace = get_trace(tx)
-    data = []
-    for frame in trace:
-        item = frame.dict()
-        item["stack"] = [to_int(x) for x in item["stack"]]
-        item["memory"] = [to_int(x) for x in item["memory"]]
-        item["storage"] = {to_int(x): to_int(y) for x, y in item["storage"].items()}
-        data.append(item)
 
     path = f"traces/{tx}.json"
     with open(path, "wt") as f:
-        json.dump(data, f, indent=2)
+        json.dump(trace.dict(), f, indent=2)
 
     print(path)
 

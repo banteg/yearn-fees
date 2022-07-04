@@ -61,8 +61,10 @@ def display_trace(trace: Trace, version, fees):
 
 
 def layout_tx(tx, only_version=None):
+    if isinstance(tx, bytes):
+        tx = tx.hex()
     reports = reports_from_tx(tx)
-    print(f"[green]found {len(reports)} reports")
+    print(f"[green]found {len(reports)} reports at {tx}")
 
     traces = get_split_trace(tx)
 

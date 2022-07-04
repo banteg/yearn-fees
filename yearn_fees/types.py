@@ -146,3 +146,6 @@ class Trace(list):
         for frame in self:
             if frame.pc == pc:
                 yield frame
+
+    def dict(self):
+        return [dataclasses.asdict(frame) for frame in self]

@@ -2,10 +2,14 @@ from typing import List
 
 from ape.contracts import ContractLog
 from semantic_version import Version
+from ape import Contract
 
+from eth_abi import decode_single
+from eth_utils import keccak
 from yearn_fees import utils
-from yearn_fees.memory_layout import EARLY_EXIT, PROGRAM_COUNTERS, MemoryLayout
+from yearn_fees.memory_layout import PROGRAM_COUNTERS, MemoryLayout
 from yearn_fees.types import Fees, Trace
+from itertools import dropwhile, takewhile
 
 
 def split_trace(trace: Trace, reports: List[ContractLog]) -> List[Trace]:
@@ -15,23 +19,28 @@ def split_trace(trace: Trace, reports: List[ContractLog]) -> List[Trace]:
     parts = []
 
     for report in reports:
+        vault = Contract(report.contract_address)
         version = utils.version_from_report(report)
-        program_counters = PROGRAM_COUNTERS[version]
-        jump_in = next(
-            i
-            for i, frame in enumerate(trace)
-            if frame.pc == program_counters[0] and frame.op == "JUMPDEST"
+        fn_start = PROGRAM_COUNTERS[version][0]
+
+        # for jump in we find a JUMPDEST where we enter _assessFees
+        trace = list(
+            dropwhile(
+                lambda frame: not (frame.op == "JUMPDEST" and frame.pc == fn_start),
+                trace,
+            )
         )
-        out_pcs = [program_counters[-1]]
-        if version in EARLY_EXIT:
-            out_pcs.append(EARLY_EXIT[version])
-        jump_out = next(
-            i + 1
-            for i, frame in enumerate(trace[jump_in:], jump_in)
-            if frame.pc in out_pcs and frame.op == "JUMP"
+        # for jump out this method is not reliable, since the function can terminate early
+        # instead, we look when the StrategyReported event is logged
+        topic = decode_single("uint256", keccak(text=vault.StrategyReported.abi.selector))
+        part = list(
+            takewhile(
+                lambda frame: not (frame.op == "LOG2" and frame.stack[2] == topic),
+                trace,
+            )
         )
-        parts.append(trace[jump_in:jump_out])
-        trace = trace[jump_out:]
+        parts.append(part)
+        trace = trace[len(part) :]
 
     return parts
 
