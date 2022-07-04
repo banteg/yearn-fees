@@ -7,19 +7,14 @@ from rich.console import Console
 from yearn_fees.assess import assess_fees
 from yearn_fees.models import Report, bind_db, db_session
 from yearn_fees.traces import fees_from_trace
-from yearn_fees.utils import (
-    get_decimals,
-    get_fee_config_at_report,
-    get_reports,
-    reports_from_tx,
-    version_from_report,
-)
+from yearn_fees import utils
+from concurrent.futures import ThreadPoolExecutor
 
 console = Console()
 
 
 def get_unindexed_transaction_hashes():
-    reports = get_reports()
+    reports = utils.get_reports()
     transactions = {log.transaction_hash.hex() for log in reports}
     num_transactions = len(transactions)
 
@@ -42,25 +37,28 @@ def start():
     for tx_hash in get_unindexed_transaction_hashes():
         queue.put(tx_hash)
 
-    worker(queue)
+    
+    with ThreadPoolExecutor(4) as pool:
+        tasks = [pool.submit(worker, n, queue) for n in range(4)]
+        print([task.result() for task in tasks])
+    
+    print('done')
 
 
-def worker(queue: Queue):
+def worker(name, queue: Queue):
     while not queue.empty():
         tx = queue.get()
-        console.log(f"[yellow]indexing {tx}")
+        console.log(f"[yellow]{name} indexing {tx}")
 
-        reports = reports_from_tx(tx)
-        console.log(f"  {len(reports)} reports")
-
-        traces = get_split_trace(tx)
+        reports = utils.reports_from_tx(tx)
+        traces = utils.get_split_trace(tx)
 
         for report, trace in zip(reports, traces):
-            version = version_from_report(report)
-            decimals = get_decimals(report.contract_address)
+            version = utils.version_from_report(report)
+            decimals = utils.get_decimals(report.contract_address)
             scale = 10**decimals
 
-            fee_config = get_fee_config_at_report(report)
+            fee_config = utils.get_fee_config_at_report(report)
             fees_assess = assess_fees(report)
             fees_trace = fees_from_trace(trace, version)
 
