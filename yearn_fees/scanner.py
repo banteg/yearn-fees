@@ -70,6 +70,7 @@ def layout_tx(tx, only_version=None):
         version = version_from_report(report)
         if only_version and version != only_version:
             continue
+        print(f'version {version}')
         print(report.__dict__)
         fees = assess_fees(report)
         print(repr(fees))
