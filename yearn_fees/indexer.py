@@ -3,18 +3,15 @@ from decimal import Decimal
 
 from ape import chain, networks
 from dask import distributed
-from rich import print
+from rich.console import Console
 from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from yearn_fees import utils
 from yearn_fees.assess import assess_fees
 from yearn_fees.models import Report, bind_db, db_session, select
 from yearn_fees.traces import fees_from_trace
-
-
-def silence_loggers():
-    for logger in ["distributed.utils_perf", "distributed.worker_memory"]:
-        logging.getLogger(logger).setLevel(logging.ERROR)
+import threading
+import warnings
 
 
 class WorkerConnection(distributed.WorkerPlugin):
@@ -25,9 +22,23 @@ class WorkerConnection(distributed.WorkerPlugin):
         chain.provider.web3.provider._request_kwargs["timeout"] = 600
 
 
-class NoDaskSpam(logging.Filter):
-    def filter(self, record):
-        return "full garbage collections took" not in record.getMessage()
+def silence_loggers():
+    warnings.filterwarnings("ignore")  # , r".*Connecting Geth plugin to non-Geth network.*")
+    for logger in ["distributed.utils_perf", "distributed.worker_memory"]:
+        logging.getLogger(logger).setLevel(logging.ERROR)
+
+
+def console_thread(console):
+    for message in distributed.Sub("console"):
+        console.log(message)
+
+
+def log(message):
+    distributed.Pub("console").put(message)
+
+
+def plural(word, count):
+    return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
 def get_unindexed_transaction_hashes():
@@ -40,8 +51,8 @@ def get_unindexed_transaction_hashes():
         for tx_hash in select(report.transaction_hash for report in Report):
             transactions.discard(tx_hash)
 
-    print(
-        f"[yellow]found {len(reports)} reports spanning {num_transactions} transactions, {len(transactions)} unindexed",
+    log(
+        f"[yellow]{len(reports)} reports spanning {num_transactions} transactions, {len(transactions)} unindexed"
     )
 
     tx_height = {log.transaction_hash.hex(): log.block_number for log in reports}
@@ -49,27 +60,32 @@ def get_unindexed_transaction_hashes():
 
 
 def start():
+    # start a dask cluster, lower n_workers if you run out of memory
     cluster = distributed.LocalCluster(n_workers=8, threads_per_worker=1)
     client = distributed.Client(cluster)
     client.register_worker_plugin(WorkerConnection())
-    print(client.dashboard_link)
     silence_loggers()
 
-    unindexed = client.submit(get_unindexed_transaction_hashes).result()
+    # send messages from workers into the main thread's console using `log`
+    console = Console()
+    threading.Thread(target=console_thread, args=(console,), daemon=True).start()
 
+    log(client.dashboard_link)
+
+    unindexed = client.submit(get_unindexed_transaction_hashes).result()
     tasks = client.map(load_transaction, unindexed)
-    columns = (
+
+    progress = Progress(
         TimeElapsedColumn(),
         BarColumn(),
         TimeRemainingColumn(),
         TextColumn("{task.percentage:>3.1f}% ({task.completed}/{task.total})"),
+        console=console,
     )
-    with Progress(*columns) as progress:
+    with progress:
         task = progress.add_task("index txs", total=len(unindexed))
         for result in distributed.as_completed(tasks):
             progress.update(task, advance=1)
-
-    print("done")
 
 
 def load_transaction(tx):
@@ -92,11 +108,11 @@ def load_transaction(tx):
             fees_trace.duration = fees_assess.duration
 
         if fees_assess != fees_trace:
-            print(f"\n[red]mismatch between assess and trace at {tx}")
-            fees_assess.compare(fees_trace, decimals)
+            log(f"[red]mismatch at {tx}")
+            log(fees_assess.compare(fees_trace, decimals, output=False))
             continue
         else:
-            print(f'\n[green]reconciled {len(reports)} reports at {tx}')
+            log(f"[green]reconciled {plural('report', len(reports))} at {tx}")
 
         with db_session:
             Report(
