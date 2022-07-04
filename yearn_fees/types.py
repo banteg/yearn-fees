@@ -1,13 +1,14 @@
+import dataclasses
 from decimal import Decimal
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
+from ape.contracts import ContractLog
+from eth_utils.humanize import humanize_seconds
 from pydantic import BaseModel
 from rich import box
 from rich.console import Console
 from rich.table import Table
-from eth_utils.humanize import humanize_seconds
 from toolz import last
-from ape.contracts import ContractLog
 
 
 class AsofDict(dict):
@@ -108,3 +109,39 @@ class FeeHistory(BaseModel):
 
     def at_report(self, report: ContractLog):
         return self.at_pos((report.block_number, report.log_index), report.strategy)
+
+
+@dataclasses.dataclass()
+class TraceFrame:
+    """
+    A modified version of `evm_trace.TraceFrame` with integers in stack/memory.
+    """
+
+    pc: int
+    op: str
+    stack: List[Any]
+    memory: List[Any]
+
+    def __post_init__(self):
+        self.stack = [int(v, 16) for v in self.stack]
+        self.memory = [int(v, 16) for v in self.memory]
+
+    @classmethod
+    def parse_obj(cls, obj):
+        class_fields = {f.name for f in dataclasses.fields(cls)}
+        return cls(**{k: v for k, v in obj.items() if k in class_fields})
+
+
+class Trace(list):
+    """
+    `Trace.parse_obj(trace['structLogs'])`
+    """
+
+    @classmethod
+    def parse_obj(cls, obj):
+        return cls(TraceFrame.parse_obj(item) for item in obj)
+
+    def scan(self, pc):
+        for frame in self:
+            if frame.pc == pc:
+                yield frame
