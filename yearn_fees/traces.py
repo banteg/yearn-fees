@@ -106,7 +106,7 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
         except KeyError:
             data['management_fee'] = data['governance_fee']
             data['performance_fee'] = 0
-        data["duration"] = extract_from_stack(trace, [[15416, 3]])
+        data["duration"] = extract_from_stack(trace, [[15427, 1], [15428, 1]])
 
     else:
         raise NotImplementedError("unsupported version", version)
