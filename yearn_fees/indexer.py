@@ -3,7 +3,6 @@ from decimal import Decimal
 
 from ape import chain, networks
 from dask import distributed
-from distributed import utils_perf
 from rich import print
 from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
 
@@ -13,8 +12,14 @@ from yearn_fees.models import Report, bind_db, db_session, select
 from yearn_fees.traces import fees_from_trace
 
 
+def silence_loggers():
+    for logger in ["distributed.utils_perf", "distributed.worker_memory"]:
+        logging.getLogger(logger).setLevel(logging.ERROR)
+
+
 class WorkerConnection(distributed.WorkerPlugin):
     def setup(self, worker):
+        silence_loggers()
         bind_db()
         networks.ethereum.mainnet.use_default_provider().__enter__()
         chain.provider.web3.provider._request_kwargs["timeout"] = 600
@@ -45,13 +50,11 @@ def get_unindexed_transaction_hashes():
 
 
 def start():
-    for name in ["distributed.utils_perf", "distributed.worker_memory"]:
-        logging.getLogger(name).handlers.clear()
-
     cluster = distributed.LocalCluster(n_workers=8, threads_per_worker=1)
     client = distributed.Client(cluster)
     client.register_worker_plugin(WorkerConnection())
     print(client.dashboard_link)
+    silence_loggers()
 
     unindexed = client.submit(get_unindexed_transaction_hashes).result()
 
