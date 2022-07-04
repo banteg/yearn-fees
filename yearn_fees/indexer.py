@@ -16,6 +16,7 @@ console = Console()
 def get_unindexed_transaction_hashes():
     reports = utils.get_reports()
     transactions = {log.transaction_hash.hex() for log in reports}
+
     num_transactions = len(transactions)
 
     with db_session:
@@ -26,7 +27,8 @@ def get_unindexed_transaction_hashes():
         f"[yellow]found {len(reports)} reports spanning {num_transactions} transactions, {len(transactions)} unindexed"
     )
 
-    return transactions
+    tx_height = {log.transaction_hash.hex(): log.block_number for log in reports}
+    return sorted(transactions, key=tx_height.get)
 
 
 def start():
@@ -37,12 +39,11 @@ def start():
     for tx_hash in get_unindexed_transaction_hashes():
         queue.put(tx_hash)
 
-    
     with ThreadPoolExecutor(4) as pool:
         tasks = [pool.submit(worker, n, queue) for n in range(4)]
         print([task.result() for task in tasks])
-    
-    print('done')
+
+    print("done")
 
 
 def worker(name, queue: Queue):
