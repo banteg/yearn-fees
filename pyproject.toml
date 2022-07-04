@@ -18,6 +18,8 @@ diskcache = "^5.4.0"
 toolz = "^0.11.2"
 pony = "^0.7.16"
 psycopg2-binary = "^2.9.3"
+dask = {extras = ["distributed"], version = "^2022.6.1"}
+bokeh = "^2.4.3"
 
 [tool.poetry.dev-dependencies]
 
