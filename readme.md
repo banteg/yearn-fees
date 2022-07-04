@@ -2,6 +2,16 @@
 
 _a quest for accurate accounting_
 
+<details>
+   <summary>👀 <strong>click to see screenshots</strong></summary>
+   
+   ### $ yearn-fees index
+   <img alt="yearn-fees index" src="https://user-images.githubusercontent.com/4562643/177218660-d0924fbc-3766-4add-bbf7-2c08a041066a.png">
+
+   ### $ yearn-fees layout
+   <img alt="yearn-fees layout" src="https://user-images.githubusercontent.com/4562643/177218709-559f6b79-8c6d-4fd7-8cb4-48f7278f4191.png">
+</details>
+
 ## what is this
 
 a set of tools to extract accurate management/performance/strategist fees from yearn harvests.
