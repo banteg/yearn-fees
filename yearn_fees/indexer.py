@@ -1,14 +1,14 @@
+from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from queue import Queue
 
 from pony.orm import select
 from rich.console import Console
 
+from yearn_fees import utils
 from yearn_fees.assess import assess_fees
 from yearn_fees.models import Report, bind_db, db_session
 from yearn_fees.traces import fees_from_trace
-from yearn_fees import utils
-from concurrent.futures import ThreadPoolExecutor
 
 console = Console()
 

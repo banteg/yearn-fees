@@ -2,15 +2,16 @@ import random
 from collections import defaultdict
 from functools import lru_cache
 from operator import attrgetter
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from ape import Contract, chain, convert
 from ape.contracts import ContractLog
 from ape.types import AddressType
 from evm_trace import TraceFrame
+from semantic_version import Version
 from toolz import concat, groupby, unique, valfilter
-from yearn_fees import traces
 
+from yearn_fees import traces
 from yearn_fees.cache import cache
 from yearn_fees.types import AsofDict, FeeConfiguration, FeeHistory
 
@@ -36,7 +37,11 @@ def get_vaults_by_version() -> Dict[str, List[str]]:
     registry = get_registry()
     logs = registry.NewVault.range(*get_range())
     vaults = groupby(attrgetter("api_version"), logs)
-    return {version: [log.vault for log in vaults[version]] for version in vaults}
+    return {
+        version: [log.vault for log in vaults[version]]
+        for version in vaults
+        if Version(version) >= Version("0.3.0")
+    }
 
 
 @cache.memoize()
