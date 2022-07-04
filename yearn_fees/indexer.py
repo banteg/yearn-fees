@@ -5,13 +5,12 @@ from pony.orm import select
 from rich.console import Console
 
 from yearn_fees.assess import assess_fees
-from yearn_fees.models import Report, db_session, bind_db
-from yearn_fees.traces import fees_from_trace, split_trace
+from yearn_fees.models import Report, bind_db, db_session
+from yearn_fees.traces import fees_from_trace
 from yearn_fees.utils import (
     get_decimals,
     get_fee_config_at_report,
     get_reports,
-    get_trace,
     reports_from_tx,
     version_from_report,
 )
@@ -54,8 +53,7 @@ def worker(queue: Queue):
         reports = reports_from_tx(tx)
         console.log(f"  {len(reports)} reports")
 
-        raw_trace = get_trace(tx)
-        traces = split_trace(raw_trace, reports)
+        traces = get_split_trace(tx)
 
         for report, trace in zip(reports, traces):
             version = version_from_report(report)

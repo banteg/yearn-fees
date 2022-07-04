@@ -2,8 +2,8 @@ from rich import print
 
 from yearn_fees.assess import assess_fees
 from yearn_fees.cache import timed
-from yearn_fees.traces import fees_from_trace, split_trace
-from yearn_fees.utils import get_decimals, get_trace, reports_from_tx, version_from_report
+from yearn_fees.traces import fees_from_trace
+from yearn_fees.utils import get_decimals, get_split_trace, reports_from_tx, version_from_report
 
 
 def compare_methods(tx, only_version=None):
@@ -12,9 +12,8 @@ def compare_methods(tx, only_version=None):
     print(f"[green]found {len(reports)} reports at {tx}")
     print(f"versions: {[version_from_report(report) for report in reports]}")
 
-    with timed('trace'):
-        raw_trace = get_trace(tx)
-        traces = split_trace(raw_trace, reports)
+    with timed("trace"):
+        traces = get_split_trace(tx)
 
     for report, trace in zip(reports, traces):
         version = version_from_report(report)
@@ -24,7 +23,7 @@ def compare_methods(tx, only_version=None):
 
         decimals = get_decimals(report.contract_address)
 
-        with timed('assess'):
+        with timed("assess"):
             fees_calc = assess_fees(report)
         fees_calc.as_table(decimals, title="calculated fees")
 

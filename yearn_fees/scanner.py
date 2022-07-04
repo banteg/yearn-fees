@@ -1,6 +1,3 @@
-from itertools import groupby
-from operator import attrgetter
-import random
 from collections import Counter
 from typing import List, Literal
 
@@ -11,16 +8,15 @@ from rich import print
 
 from yearn_fees.assess import assess_fees
 from yearn_fees.memory_layout import MemoryLayout
-from yearn_fees.traces import fees_from_trace, split_trace
+from yearn_fees.traces import fees_from_trace
 from yearn_fees.utils import (
     get_decimals,
     get_reports,
-    get_trace,
+    get_split_trace,
     get_vaults_by_version,
     reports_from_tx,
     version_from_report,
 )
-from toolz import unique
 
 
 class MatchedValue(BaseModel):
@@ -68,8 +64,7 @@ def layout_tx(tx, only_version=None):
     reports = reports_from_tx(tx)
     print(f"[green]found {len(reports)} reports")
 
-    raw_trace = get_trace(tx)
-    traces = split_trace(raw_trace, reports)
+    traces = get_split_trace(tx)
 
     for report, trace in zip(reports, traces):
         version = version_from_report(report)
@@ -88,8 +83,7 @@ def layout_tx(tx, only_version=None):
 def find_duration_from_tx(tx, version=None, quiet=False):
     print(f"[green]{tx}")
     reports = reports_from_tx(tx)
-    raw_trace = get_trace(tx)
-    traces = split_trace(raw_trace, reports)
+    traces = get_split_trace(tx)
     results = Counter()
 
     for report, trace in zip(reports, traces):

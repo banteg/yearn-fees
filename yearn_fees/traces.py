@@ -90,7 +90,7 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
         except KeyError:
             data["management_fee"] = layout[17731]["governance_fee"]
             data["performance_fee"] = 0
-        data["duration"] = extract_from_stack(trace, [[17014, 3], [9017, 6]])
+        data["duration"] = extract_from_stack(trace, [[17015, 2], [9017, 6]])
 
     elif version == "0.3.1":
         data = layout[16164]
