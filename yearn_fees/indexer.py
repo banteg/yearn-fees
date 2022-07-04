@@ -1,6 +1,6 @@
-from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
-from queue import Queue
+from functools import wraps
+from ape import networks
 
 from pony.orm import select
 from rich.console import Console
@@ -10,7 +10,23 @@ from yearn_fees.assess import assess_fees
 from yearn_fees.models import Report, bind_db, db_session
 from yearn_fees.traces import fees_from_trace
 
+from dask import distributed
+
 console = Console()
+
+
+def with_connection(f):
+    """
+    Since workers start in separate processes, we need setup eth and db connections fot them.
+    """
+
+    @wraps(f)
+    def wrapped(*args, **kwds):
+        bind_db()
+        with networks.ethereum.mainnet.use_default_provider():
+            f(*args, **kwds)
+
+    return wrapped
 
 
 def get_unindexed_transaction_hashes():
@@ -33,21 +49,23 @@ def get_unindexed_transaction_hashes():
 
 def start(num_workers: int):
     console.log("starting indexer")
+    client = distributed.Client()
+    console.log(client.dashboard_link)
     bind_db()
 
-    queue = Queue()
+    queue = distributed.Queue()
     for tx_hash in get_unindexed_transaction_hashes():
         queue.put(tx_hash)
 
-    with ThreadPoolExecutor(num_workers) as pool:
-        tasks = [pool.submit(worker, n, queue) for n in range(num_workers)]
-        print([task.result() for task in tasks])
+    tasks = [client.submit(worker, n, queue) for n in range(num_workers)]
+    distributed.wait(tasks)
 
     print("done")
 
 
-def worker(name, queue: Queue):
-    while not queue.empty():
+@with_connection
+def worker(name, queue):
+    while queue.qsize():
         tx = queue.get()
         console.log(f"[yellow]{name} indexing {tx}")
 
