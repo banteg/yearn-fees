@@ -2,14 +2,13 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Literal
 
-from eth_utils import to_int
-from evm_trace import TraceFrame
 from pydantic import BaseModel
 from rich import print
 
 from yearn_fees.assess import assess_fees
 from yearn_fees.memory_layout import MemoryLayout
 from yearn_fees.traces import fees_from_trace
+from yearn_fees.types import Trace
 from yearn_fees.utils import (
     get_decimals,
     get_reports,
@@ -41,13 +40,13 @@ def find_value(trace, value) -> List[MatchedValue]:
             continue
         for loc in ["stack", "memory"]:
             for index, item in enumerate(getattr(frame, loc)):
-                if to_int(item) == value:
+                if item == value:
                     results.append(MatchedValue(loc=loc, pc=frame.pc, index=index))
 
     return results
 
 
-def display_trace(trace: List[TraceFrame], version, fees):
+def display_trace(trace: Trace, version, fees):
 
     layout = MemoryLayout(trace, version)
     highlight = dict(
@@ -98,7 +97,7 @@ def find_duration_from_tx(tx, version=None, quiet=False):
         duration = fees_assess.duration
         if duration == 0:
             continue
-        
+
         print(f"[green]{tx} report {i}")
         print(f"version {vers}")
         fees_trace = fees_from_trace(trace, vers)
@@ -126,10 +125,7 @@ def find_duration(version, tx=None, samples=10):
     results = Counter()
 
     with ThreadPoolExecutor(4) as pool:
-        tasks = [
-            pool.submit(find_duration_from_tx, tx, version, quiet=True)
-            for tx in txs
-        ]
+        tasks = [pool.submit(find_duration_from_tx, tx, version, quiet=True) for tx in txs]
         for future in as_completed(tasks):
             results.update(future.result())
 
