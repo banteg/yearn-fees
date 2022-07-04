@@ -1,15 +1,14 @@
 from typing import List
 
-from eth_utils import to_int
-from evm_trace import TraceFrame
+from ape.contracts import ContractLog
 from semantic_version import Version
 
-from yearn_fees.memory_layout import EARLY_EXIT, PROGRAM_COUNTERS, MemoryLayout
-from yearn_fees.types import Fees
 from yearn_fees import utils
+from yearn_fees.memory_layout import EARLY_EXIT, PROGRAM_COUNTERS, MemoryLayout
+from yearn_fees.types import Fees, Trace
 
 
-def split_trace(trace, reports):
+def split_trace(trace: Trace, reports: List[ContractLog]) -> List[Trace]:
     """
     Splits a trace into chunks covering _assessFees.
     """
@@ -37,15 +36,7 @@ def split_trace(trace, reports):
     return parts
 
 
-def extract_from_stack(trace, pc, index):
-    """
-    positions is a list of [pc, index]
-    """
-    frame = next(frame for frame in trace if frame.pc == pc)
-    return to_int(frame.stack[index])
-
-
-def fees_from_trace(trace: List[TraceFrame], version: str):
+def fees_from_trace(trace: Trace, version: str) -> Fees:
     """
     Recover fees from trace frames. The trace must be already split.
     The program counters are carefully selected from `yearn-fees layout`.

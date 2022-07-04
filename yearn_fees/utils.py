@@ -7,13 +7,12 @@ from typing import Dict, List
 from ape import Contract, chain, convert
 from ape.contracts import ContractLog
 from ape.types import AddressType
-from evm_trace import TraceFrame
 from semantic_version import Version
 from toolz import concat, groupby, unique, valfilter
 
 from yearn_fees import traces
 from yearn_fees.cache import cache
-from yearn_fees.types import AsofDict, FeeConfiguration, FeeHistory
+from yearn_fees.types import AsofDict, FeeConfiguration, FeeHistory, Trace, TraceFrame
 
 # sort key for logs/events
 LOG_KEY = attrgetter("block_number", "log_index")
@@ -29,6 +28,7 @@ def get_registry():
     Get the latest vault registry on mainnet.
     """
     latest_registry = convert("v2.registry.ychad.eth", AddressType)
+
     return Contract(latest_registry)
 
 
@@ -37,6 +37,7 @@ def get_vaults_by_version() -> Dict[str, List[str]]:
     registry = get_registry()
     logs = registry.NewVault.range(*get_range())
     vaults = groupby(attrgetter("api_version"), logs)
+
     return {
         version: [log.vault for log in vaults[version]]
         for version in vaults
@@ -68,6 +69,7 @@ def vault_selectors(event_name):
     Find all variants of an event selector across all vault versions.
     """
     each_version = [Contract(vaults[0]) for vaults in get_vaults_by_version().values()]
+
     return list(
         unique(
             (getattr(vault, event_name).abi for vault in each_version),
@@ -90,6 +92,7 @@ def fetch_all_reports() -> List[ContractLog]:
         stop_block=chain.blocks.height,
         block_page_size=1_000_000,
     )
+
     return list(logs)
 
 
@@ -158,6 +161,7 @@ def txs_with_multiple_reports():
     Find transactions where multiple reports have happened.
     """
     reports = get_reports()
+
     return valfilter(
         lambda logs: len(logs) >= 2, groupby(lambda log: log.transaction_hash, reports)
     )
@@ -168,6 +172,7 @@ def txs_with_multiple_vault_harvests():
     Find transaction with multiple harvests of the same vault.
     """
     reports = get_reports()
+
     return valfilter(
         lambda logs: len(logs) >= 2,
         groupby(lambda log: (log.transaction_hash, log.contract_address), reports),
@@ -179,6 +184,7 @@ def txs_with_multiple_strategy_harvests():
     Find transaction with multiple harvests of the same strategy (0 duration).
     """
     reports = get_reports()
+
     return valfilter(
         lambda logs: len(logs) >= 2,
         groupby(lambda log: (log.transaction_hash, log.strategy), reports),
@@ -216,7 +222,6 @@ def get_fee_config_at_report(report: ContractLog) -> FeeConfiguration:
     A more accurate method to get fee configuration.
     Supports fee adjustments in the same block as report.
     """
-    strategy = Contract(report.strategy)
     vault = report.contract_address
     fee_conifg = get_vault_fee_history(vault)
 
@@ -224,18 +229,26 @@ def get_fee_config_at_report(report: ContractLog) -> FeeConfiguration:
 
 
 @cache.memoize()
-def get_trace(tx):
+def _get_trace(tx: str) -> Trace:
+    # use the lowest-level method available to bypass slow web3.py middlewares
+    resp = chain.provider.web3.provider.make_request("debug_traceTransaction", [tx])
+    trace = Trace.parse_obj(resp["result"]["structLogs"])
+
+
+def get_trace(tx) -> Trace:
     if isinstance(tx, bytes):
         tx = tx.hex()
-    return list(chain.provider.get_transaction_trace(tx))
+
+    return _get_trace(tx)
 
 
 @cache.memoize()
-def get_split_trace(tx) -> List[List[TraceFrame]]:
+def get_split_trace(tx) -> List[Trace]:
     if isinstance(tx, bytes):
         tx = tx.hex()
-    trace = list(chain.provider.get_transaction_trace(tx))
+    trace = get_trace(tx)
     reports = reports_from_tx(tx)
+
     return traces.split_trace(trace, reports)
 
 
@@ -247,6 +260,7 @@ def reports_from_tx(tx) -> List[ContractLog]:
         logs.extend(receipt.decode_logs(event))
 
     reports = sorted(logs, key=LOG_KEY)
+
     return reports
 
 
