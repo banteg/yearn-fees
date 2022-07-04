@@ -1,15 +1,15 @@
+from itertools import dropwhile, takewhile
 from typing import List
 
-from ape.contracts import ContractLog
-from semantic_version import Version
 from ape import Contract
-
+from ape.contracts import ContractLog
 from eth_abi import decode_single
 from eth_utils import keccak
+from semantic_version import Version
+
 from yearn_fees import utils
 from yearn_fees.memory_layout import PROGRAM_COUNTERS, MemoryLayout
 from yearn_fees.types import Fees, Trace
-from itertools import dropwhile, takewhile
 
 
 def split_trace(trace: Trace, reports: List[ContractLog]) -> List[Trace]:
