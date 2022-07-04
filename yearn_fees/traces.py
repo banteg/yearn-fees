@@ -90,8 +90,12 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
 
     elif version == "0.3.1":
         data = layout[16164]
-        data["management_fee"] = layout[15686]["governance_fee"]
-        data["performance_fee"] = layout[15697]["governance_fee"] - data["management_fee"]
+        try:
+            data["management_fee"] = layout[15686]["governance_fee"]
+            data["performance_fee"] = layout[15697]["governance_fee"] - data["management_fee"]
+        except KeyError:
+            data["management_fee"] = data["governance_fee"]
+            data["performance_fee"] = 0
         # no accurate way to get duration for 0.3.1
 
     elif version == "0.3.0":
