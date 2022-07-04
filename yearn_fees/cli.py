@@ -73,8 +73,9 @@ def dump_trace(tx):
 
 
 @cli.command(cls=MainnetCommand)
-def index():
-    indexer.start()
+@click.option("--workers", type=click.IntRange(min=1, max=32), default=4)
+def index(workers):
+    indexer.start(workers)
 
 
 @cli.command(cls=MainnetCommand)

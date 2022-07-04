@@ -31,7 +31,7 @@ def get_unindexed_transaction_hashes():
     return sorted(transactions, key=tx_height.get)
 
 
-def start():
+def start(num_workers: int):
     console.log("starting indexer")
     bind_db()
 
@@ -39,8 +39,8 @@ def start():
     for tx_hash in get_unindexed_transaction_hashes():
         queue.put(tx_hash)
 
-    with ThreadPoolExecutor(4) as pool:
-        tasks = [pool.submit(worker, n, queue) for n in range(4)]
+    with ThreadPoolExecutor(num_workers) as pool:
+        tasks = [pool.submit(worker, n, queue) for n in range(num_workers)]
         print([task.result() for task in tasks])
 
     print("done")
