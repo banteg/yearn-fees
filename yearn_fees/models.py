@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from decimal import Decimal
 
 from pony.orm import Database, Optional, PrimaryKey, Required, db_session, select
@@ -10,6 +11,7 @@ class Report(db.Entity):
     _table_ = "reports"
     # position
     block_number = Required(int)
+    timestamp = Required(datetime, sql_type="timestamptz")
     transaction_hash = Required(str)
     log_index = Required(int)
     # log

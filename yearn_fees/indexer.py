@@ -12,6 +12,7 @@ from yearn_fees.models import Report, bind_db, db_session, select
 from yearn_fees.traces import fees_from_trace
 import threading
 import warnings
+from datetime import datetime, timezone
 
 
 class WorkerConnection(distributed.WorkerPlugin):
@@ -96,6 +97,7 @@ def load_transaction(tx):
     traces = utils.get_split_trace(tx)
 
     for report, trace in zip(reports, traces):
+        timestamp = chain.blocks[report.block_number].timestamp
         version = utils.version_from_report(report)
         decimals = utils.get_decimals(report.contract_address)
         scale = 10**decimals
@@ -115,6 +117,7 @@ def load_transaction(tx):
         with db_session:
             Report(
                 block_number=report.block_number,
+                timestamp=datetime.fromtimestamp(timestamp, timezone.utc),
                 transaction_hash=report.transaction_hash.hex(),
                 log_index=report.log_index,
                 vault=report.contract_address,
