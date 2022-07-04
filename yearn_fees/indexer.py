@@ -70,6 +70,8 @@ def worker(name, queue: Queue):
                 fees_assess.compare(fees_trace, decimals)
                 continue
 
+            fees_assess.as_table(decimals, tx)
+
             with db_session:
                 Report(
                     block_number=report.block_number,
