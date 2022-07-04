@@ -41,8 +41,7 @@ def get_unindexed_transaction_hashes():
             transactions.discard(tx_hash)
 
     print(
-        f"[yellow]found {len(reports)} reports spanning {num_transactions} transactions,",
-        f"{len(transactions)} unindexed",
+        f"[yellow]found {len(reports)} reports spanning {num_transactions} transactions, {len(transactions)} unindexed",
     )
 
     tx_height = {log.transaction_hash.hex(): log.block_number for log in reports}
