@@ -83,16 +83,14 @@ def layout_tx(tx, only_version=None):
 
 
 def find_duration_from_tx(tx, version=None, quiet=False):
-    print(f"[green]{tx}")
     reports = reports_from_tx(tx)
     traces = get_split_trace(tx)
     results = Counter()
 
-    for report, trace in zip(reports, traces):
+    for i, (report, trace) in enumerate(zip(reports, traces)):
         vers = version_from_report(report)
         if version and vers != version:
             continue
-        print(f"version {vers}")
 
         decimals = get_decimals(report.contract_address)
 
@@ -100,7 +98,9 @@ def find_duration_from_tx(tx, version=None, quiet=False):
         duration = fees_assess.duration
         if duration == 0:
             continue
-
+        
+        print(f"[green]{tx} report {i}")
+        print(f"version {vers}")
         fees_trace = fees_from_trace(trace, vers)
         fees_assess.compare(fees_trace, decimals)
 
@@ -130,8 +130,8 @@ def find_duration(version, tx=None):
             pool.submit(find_duration_from_tx, tx, version, quiet=True)
             for tx in txs
         ]
-        for result in as_completed(tasks):
-            results.update(result)
+        for future in as_completed(tasks):
+            results.update(future.result())
 
     best = max(results.values())
     for res, num in results.most_common():
