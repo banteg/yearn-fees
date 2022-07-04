@@ -95,6 +95,8 @@ def load_transaction(tx):
             print(f"\n[red]mismatch between assess and trace at {tx}")
             fees_assess.compare(fees_trace, decimals)
             continue
+        else:
+            print(f'\n[green]reconciled {len(reports)} reports at {tx}')
 
         with db_session:
             Report(
