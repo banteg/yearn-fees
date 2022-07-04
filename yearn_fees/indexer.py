@@ -3,14 +3,13 @@ from decimal import Decimal
 from ape import chain, networks
 from dask import distributed
 from pony.orm import select
-from rich.console import Console
+from rich import print
+from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from yearn_fees import utils
 from yearn_fees.assess import assess_fees
 from yearn_fees.models import Report, bind_db, db_session
 from yearn_fees.traces import fees_from_trace
-
-console = Console()
 
 
 class WorkerConnection(distributed.WorkerPlugin):
@@ -30,8 +29,9 @@ def get_unindexed_transaction_hashes():
         for tx_hash in select(report.transaction_hash for report in Report):
             transactions.discard(tx_hash)
 
-    console.log(
-        f"[yellow]found {len(reports)} reports spanning {num_transactions} transactions, {len(transactions)} unindexed"
+    print(
+        f"[yellow]found {len(reports)} reports spanning {num_transactions} transactions,",
+        f"{len(transactions)} unindexed",
     )
 
     tx_height = {log.transaction_hash.hex(): log.block_number for log in reports}
@@ -39,18 +39,25 @@ def get_unindexed_transaction_hashes():
 
 
 def start():
-    cluster = distributed.LocalCluster(n_workers=4, threads_per_worker=1)
+    cluster = distributed.LocalCluster(n_workers=8, threads_per_worker=1)
     client = distributed.Client(cluster)
     client.register_worker_plugin(WorkerConnection())
-    console.log(client.dashboard_link)
-    
+    print(client.dashboard_link)
+
     unindexed = client.submit(get_unindexed_transaction_hashes).result()
 
-    tasks = []
-    for tx in unindexed:
-        tasks.append(client.submit(load_transaction, tx))
+    tasks = client.map(load_transaction, unindexed)
+    columns = (
+        TimeElapsedColumn(),
+        BarColumn(),
+        TimeRemainingColumn(),
+        TextColumn("{task.percentage:>3.1f}% ({task.completed}/{task.total})"),
+    )
+    with Progress(*columns) as progress:
+        task = progress.add_task("index txs", total=len(unindexed))
+        for result in distributed.as_completed(tasks):
+            progress.update(task, advance=1)
 
-    distributed.wait(tasks)
     print("done")
 
 
@@ -74,7 +81,7 @@ def load_transaction(tx):
             fees_trace.duration = fees_assess.duration
 
         if fees_assess != fees_trace:
-            console.log(f"[red]mismatch between assess and trace at {tx}")
+            print(f"\n[red]mismatch between assess and trace at {tx}")
             fees_assess.compare(fees_trace, decimals)
             continue
 
