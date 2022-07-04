@@ -8,15 +8,15 @@ from yearn_fees.utils import get_decimals, get_split_trace, reports_from_tx, ver
 def compare_methods(tx, only_version=None):
     tx = tx.hex() if isinstance(tx, bytes) else tx
     reports = reports_from_tx(tx)
-    print(f"[green]found {len(reports)} reports at {tx}")
-    print(f"versions: {[version_from_report(report) for report in reports]}")
-
     traces = get_split_trace(tx)
+    print(f"[green]found {len(reports)} reports at {tx}")
 
     for report, trace in zip(reports, traces):
         version = version_from_report(report)
         if only_version and version != only_version:
             continue
+
+        print(f"version {version}")
         print(report.__dict__)
 
         decimals = get_decimals(report.contract_address)

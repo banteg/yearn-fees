@@ -50,7 +50,7 @@ def split_trace(trace: Trace, reports: List[ContractLog]) -> List[Trace]:
 
         # for end this method is not reliable, since the function can terminate early
         # instead, we look for the StrategyReported event
-        if start and frame.op == "LOG2" and len(frame.stack) >= 2 and frame.stack[1] == meta.topic:
+        if start and frame.op == "LOG2" and meta.topic in frame.stack:
             parts.append(trace[start:i])
             start = None
             try:

@@ -149,7 +149,7 @@ def get_sample_txs(version, num_vaults, num_txs):
     txs = []
     for vault in random.sample(vaults, num_vaults):
         vault_txs = list(
-            unique(log.transaction_hash for log in reports if log.contract_address == vault)
+            unique(log.transaction_hash.hex() for log in reports if log.contract_address == vault)
         )
         txs.extend(random.sample(vault_txs, min(num_txs, len(vault_txs))))
 
@@ -233,7 +233,7 @@ def _get_trace(tx: str) -> Trace:
     # use the lowest-level method available to bypass slow web3.py middlewares
     resp = chain.provider.web3.provider.make_request("debug_traceTransaction", [tx])
     trace = Trace.parse_obj(resp["result"]["structLogs"])
-    
+
     return trace
 
 
@@ -249,8 +249,10 @@ def get_split_trace(tx) -> List[Trace]:
         tx = tx.hex()
     trace = get_trace(tx)
     reports = reports_from_tx(tx)
+    split = traces.split_trace(trace, reports)
+    assert len(reports) == len(split), f"reports={len(reports)} split={len(split)} tx={tx}"
 
-    return traces.split_trace(trace, reports)
+    return split
 
 
 @cache.memoize()

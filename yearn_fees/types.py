@@ -80,7 +80,8 @@ class Fees(BaseModel):
         )
 
         if output:
-            Console().print(table)
+            console = Console()
+            console.print(table)
         else:
             return table
 
