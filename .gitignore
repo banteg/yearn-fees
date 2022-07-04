@@ -10,3 +10,4 @@ cache
 __pycache__
 .python-version
 .vscode
+dask-worker-space
