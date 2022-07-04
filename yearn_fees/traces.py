@@ -37,16 +37,12 @@ def split_trace(trace, reports):
     return parts
 
 
-def extract_from_stack(trace, positions: List):
+def extract_from_stack(trace, pc, index):
     """
     positions is a list of [pc, index]
     """
-    for pc, index in positions:
-        try:
-            frame = next(frame for frame in trace if frame.pc == pc)
-            return to_int(frame.stack[index])
-        except StopIteration:
-            pass
+    frame = next(frame for frame in trace if frame.pc == pc)
+    return to_int(frame.stack[index])
 
 
 def fees_from_trace(trace: List[TraceFrame], version: str):
@@ -70,7 +66,7 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
 
     elif version == "0.3.5":
         data = layout[21546]
-        data["duration"] = extract_from_stack(trace, [[20516, 5]])
+        data["duration"] = extract_from_stack(trace, 20516, 5)
 
     elif version == "0.3.3":
         data = layout[20312]
@@ -80,7 +76,7 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
         except KeyError:
             data["management_fee"] = 0
             data["performance_fee"] = 0
-        data["duration"] = extract_from_stack(trace, [[19596, 4]])
+        data["duration"] = extract_from_stack(trace, 19596, 4)
 
     elif version == "0.3.2":
         data = layout[17731]
@@ -90,13 +86,13 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
         except KeyError:
             data["management_fee"] = data["governance_fee"]
             data["performance_fee"] = 0
-        data["duration"] = extract_from_stack(trace, [[17015, 2], [9017, 6]])
+        # no accurate way to get duration for 0.3.2
 
     elif version == "0.3.1":
         data = layout[16164]
         data["management_fee"] = layout[15686]["governance_fee"]
         data["performance_fee"] = layout[15697]["governance_fee"] - data["management_fee"]
-        data["duration"] = extract_from_stack(trace, [[15447, 3]])
+        # no accurate way to get duration for 0.3.1
 
     elif version == "0.3.0":
         data = layout[16133]
@@ -104,9 +100,9 @@ def fees_from_trace(trace: List[TraceFrame], version: str):
             data["management_fee"] = layout[15655]["governance_fee"]
             data["performance_fee"] = layout[15666]["governance_fee"] - data["management_fee"]
         except KeyError:
-            data['management_fee'] = data['governance_fee']
-            data['performance_fee'] = 0
-        data["duration"] = extract_from_stack(trace, [[15427, 1], [15428, 1]])
+            data["management_fee"] = data["governance_fee"]
+            data["performance_fee"] = 0
+        # no accurate way to get duration for 0.3.0
 
     else:
         raise NotImplementedError("unsupported version", version)
