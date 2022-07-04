@@ -1,4 +1,5 @@
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Literal
 
 from eth_utils import to_int
@@ -70,7 +71,7 @@ def layout_tx(tx, only_version=None):
         version = version_from_report(report)
         if only_version and version != only_version:
             continue
-        print(f'version {version}')
+        print(f"version {version}")
         print(report.__dict__)
         fees = assess_fees(report)
         print(repr(fees))
@@ -124,8 +125,13 @@ def find_duration(version, tx=None):
     txs = sorted(txs)[:10]
     results = Counter()
 
-    for tx in txs:
-        results.update(find_duration_from_tx(tx, version, quiet=True))
+    with ThreadPoolExecutor(4) as pool:
+        tasks = [
+            pool.submit(find_duration_from_tx, tx, version, quiet=True)
+            for tx in txs
+        ]
+        for result in as_completed(tasks):
+            results.update(result)
 
     best = max(results.values())
     for res, num in results.most_common():
