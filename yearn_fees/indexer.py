@@ -45,7 +45,8 @@ def get_unindexed_transaction_hashes():
 
 
 def start():
-    utils_perf.logger.setLevel(logging.ERROR)
+    for name in ["distributed.utils_perf", "distributed.worker_memory"]:
+        logging.getLogger(name).handlers.clear()
 
     cluster = distributed.LocalCluster(n_workers=8, threads_per_worker=1)
     client = distributed.Client(cluster)
