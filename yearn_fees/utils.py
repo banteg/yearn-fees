@@ -233,6 +233,8 @@ def _get_trace(tx: str) -> Trace:
     # use the lowest-level method available to bypass slow web3.py middlewares
     resp = chain.provider.web3.provider.make_request("debug_traceTransaction", [tx])
     trace = Trace.parse_obj(resp["result"]["structLogs"])
+    
+    return trace
 
 
 def get_trace(tx) -> Trace:
