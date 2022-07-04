@@ -79,10 +79,11 @@ def index():
 
 @cli.command(cls=MainnetCommand)
 @click.argument("version_or_tx")
-def find_duration(version_or_tx):
+@click.option('--samples', type=click.IntRange(min=1))
+def find_duration(version_or_tx, samples):
     if version_or_tx in MEMORY_LAYOUT:
         version = version_or_tx
-        scanner.find_duration(version)
+        scanner.find_duration(version, samples=samples)
     else:
         tx = version_or_tx
         scanner.find_duration_from_tx(tx)

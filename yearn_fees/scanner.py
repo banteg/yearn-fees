@@ -114,7 +114,7 @@ def find_duration_from_tx(tx, version=None, quiet=False):
     return results
 
 
-def find_duration(version, tx=None):
+def find_duration(version, tx=None, samples=10):
     """
     Find non-ambiguous program counters where duration is in memory or on stack.
     """
@@ -122,7 +122,7 @@ def find_duration(version, tx=None):
     vaults = get_vaults_by_version()
     reports = [log for log in reports if log.contract_address in vaults[version]]
     txs = {log.transaction_hash.hex() for log in reports}
-    txs = sorted(txs)[:10]
+    txs = sorted(txs)[:samples]
     results = Counter()
 
     with ThreadPoolExecutor(4) as pool:
