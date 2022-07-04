@@ -1,14 +1,15 @@
+import logging
 from decimal import Decimal
 
 from ape import chain, networks
 from dask import distributed
-from pony.orm import select
+from distributed import utils_perf
 from rich import print
 from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from yearn_fees import utils
 from yearn_fees.assess import assess_fees
-from yearn_fees.models import Report, bind_db, db_session
+from yearn_fees.models import Report, bind_db, db_session, select
 from yearn_fees.traces import fees_from_trace
 
 
@@ -17,6 +18,11 @@ class WorkerConnection(distributed.WorkerPlugin):
         bind_db()
         networks.ethereum.mainnet.use_default_provider().__enter__()
         chain.provider.web3.provider._request_kwargs["timeout"] = 600
+
+
+class NoDaskSpam(logging.Filter):
+    def filter(self, record):
+        return "full garbage collections took" not in record.getMessage()
 
 
 def get_unindexed_transaction_hashes():
@@ -39,6 +45,8 @@ def get_unindexed_transaction_hashes():
 
 
 def start():
+    utils_perf.logger.setLevel(logging.ERROR)
+
     cluster = distributed.LocalCluster(n_workers=8, threads_per_worker=1)
     client = distributed.Client(cluster)
     client.register_worker_plugin(WorkerConnection())

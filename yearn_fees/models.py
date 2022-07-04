@@ -1,7 +1,7 @@
 import os
 from decimal import Decimal
 
-from pony.orm import Database, Optional, PrimaryKey, Required, db_session
+from pony.orm import Database, Optional, PrimaryKey, Required, db_session, select
 
 db = Database()
 
