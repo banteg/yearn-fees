@@ -61,8 +61,14 @@ def worker(name, queue: Queue):
             fee_config = utils.get_fee_config_at_report(report)
             fees_assess = assess_fees(report)
             fees_trace = fees_from_trace(trace, version)
+            # some versions can't get an accurate duration from trace
+            if fees_trace.duration is None:
+                fees_trace.duration = fees_assess.duration
 
-            assert fees_assess == fees_trace, f"mismatch between assess and trace at {tx}"
+            if fees_assess != fees_trace:
+                console.log(f"[red]mismatch between assess and trace at {tx}")
+                fees_assess.compare(fees_trace, decimals)
+                continue
 
             with db_session:
                 Report(
@@ -88,5 +94,3 @@ def worker(name, queue: Queue):
                     strategist_fee=Decimal(fees_assess.strategist_fee) / scale,
                     duration=fees_assess.duration,
                 )
-
-        break

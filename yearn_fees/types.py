@@ -27,7 +27,7 @@ class Fees(BaseModel):
     performance_fee: int = 0
     strategist_fee: int = 0
     gain: int = 0
-    duration: int = 0
+    duration: int = None
 
     @property
     def governance_fee(self):
