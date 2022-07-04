@@ -1,10 +1,11 @@
-from itertools import dropwhile, takewhile
+import dataclasses
 from typing import List
 
 from ape import Contract
 from ape.contracts import ContractLog
 from eth_abi import decode_single
 from eth_utils import keccak
+from ethpm_types import ContractInstance
 from semantic_version import Version
 
 from yearn_fees import utils
@@ -12,35 +13,50 @@ from yearn_fees.memory_layout import PROGRAM_COUNTERS, MemoryLayout
 from yearn_fees.types import Fees, Trace
 
 
+@dataclasses.dataclass
+class ReportMetadata:
+    vault: ContractInstance
+    version: str
+    topic: int
+    jumpdest: int
+
+    @classmethod
+    def from_report(cls, report):
+        vault = Contract(report.contract_address)
+        version = utils.version_from_report(report)
+
+        return cls(
+            vault=vault,
+            version=version,
+            topic=decode_single("uint256", keccak(text=vault.StrategyReported.abi.selector)),
+            jumpdest=PROGRAM_COUNTERS[version][0],
+        )
+
+
 def split_trace(trace: Trace, reports: List[ContractLog]) -> List[Trace]:
     """
     Splits a trace into chunks covering _assessFees.
     """
     parts = []
+    # we can skip an index if it's an iterator
+    report_metadata = (ReportMetadata.from_report(report) for report in reports)
+    meta = next(report_metadata)
+    start = None
 
-    for report in reports:
-        vault = Contract(report.contract_address)
-        version = utils.version_from_report(report)
-        fn_start = PROGRAM_COUNTERS[version][0]
+    for i, frame in enumerate(trace):
+        # for start we find a JUMPDEST where we enter _assessFees
+        if start is None and frame.op == "JUMPDEST" and frame.pc == meta.jumpdest:
+            start = i
 
-        # for jump in we find a JUMPDEST where we enter _assessFees
-        trace = list(
-            dropwhile(
-                lambda frame: not (frame.op == "JUMPDEST" and frame.pc == fn_start),
-                trace,
-            )
-        )
-        # for jump out this method is not reliable, since the function can terminate early
-        # instead, we look when the StrategyReported event is logged
-        topic = decode_single("uint256", keccak(text=vault.StrategyReported.abi.selector))
-        part = list(
-            takewhile(
-                lambda frame: not (frame.op == "LOG2" and frame.stack[2] == topic),
-                trace,
-            )
-        )
-        parts.append(part)
-        trace = trace[len(part) :]
+        # for end this method is not reliable, since the function can terminate early
+        # instead, we look for the StrategyReported event
+        if start and frame.op == "LOG2" and len(frame.stack) >= 2 and frame.stack[1] == meta.topic:
+            parts.append(trace[start:i])
+            start = None
+            try:
+                meta = next(report_metadata)
+            except StopIteration:
+                break
 
     return parts
 
