@@ -61,7 +61,7 @@ def get_unindexed_transaction_hashes():
 
 def start():
     # start a dask cluster, lower n_workers if you run out of memory
-    cluster = distributed.LocalCluster(n_workers=8, threads_per_worker=1)
+    cluster = distributed.LocalCluster(n_workers=4, threads_per_worker=1)
     client = distributed.Client(cluster)
     client.register_worker_plugin(WorkerConnection())
     silence_loggers()
@@ -111,8 +111,6 @@ def load_transaction(tx):
             log(f"[red]mismatch at {tx}")
             log(fees_assess.compare(fees_trace, decimals, output=False))
             continue
-        else:
-            log(f"[green]reconciled {plural('report', len(reports))} at {tx}")
 
         with db_session:
             Report(
@@ -138,3 +136,5 @@ def load_transaction(tx):
                 strategist_fee=Decimal(fees_assess.strategist_fee) / scale,
                 duration=fees_assess.duration,
             )
+
+    log(f"[green]reconciled {plural('report', len(reports))} at {tx}")
