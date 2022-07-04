@@ -1,6 +1,6 @@
 import dataclasses
 from decimal import Decimal
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 
 from ape.contracts import ContractLog
 from eth_utils.humanize import humanize_seconds
@@ -114,13 +114,14 @@ class FeeHistory(BaseModel):
 @dataclasses.dataclass()
 class TraceFrame:
     """
-    A modified version of `evm_trace.TraceFrame` with integers in stack/memory.
+    A modified version of `evm_trace.TraceFrame` with integers
+    in stack/memory and no gas, gas_cost, depth, storage fields.
     """
 
     pc: int
     op: str
-    stack: List[Any]
-    memory: List[Any]
+    stack: List[int]
+    memory: List[int]
 
     def __post_init__(self):
         self.stack = [int(v, 16) for v in self.stack]
@@ -138,10 +139,10 @@ class Trace(list):
     """
 
     @classmethod
-    def parse_obj(cls, obj):
+    def parse_obj(cls, obj) -> List[TraceFrame]:
         return cls(TraceFrame.parse_obj(item) for item in obj)
 
-    def scan(self, pc):
+    def scan(self, pc) -> Iterator[TraceFrame]:
         for frame in self:
             if frame.pc == pc:
                 yield frame

@@ -1,9 +1,7 @@
-from typing import List
-from eth_utils import to_int
-
-from evm_trace import TraceFrame
-from rich.table import Table
 from rich.console import Console
+from rich.table import Table
+
+from yearn_fees.types import Trace
 
 # fmt: off
 # output by a modified vyper compiler
@@ -50,7 +48,7 @@ class MemoryLayout(dict):
     Pivots a trace to (pc -> name -> memory value).
     """
 
-    def __init__(self, trace: List[TraceFrame], version: str):
+    def __init__(self, trace: Trace, version: str):
         self._memory_layout = {
             key: value
             for key, value in MEMORY_LAYOUT[version]["_assessFees"].items()
@@ -66,7 +64,7 @@ class MemoryLayout(dict):
                 if name.startswith("#internal"):
                     continue
                 try:
-                    self[frame.pc][name] = to_int(frame.memory[pos])
+                    self[frame.pc][name] = frame.memory[pos]
                 except IndexError:
                     self[frame.pc][name] = None
 
