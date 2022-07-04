@@ -7,3 +7,6 @@ build
 old
 !metadata/pcs_by_version.json
 cache
+__pycache__
+.python-version
+.vscode
