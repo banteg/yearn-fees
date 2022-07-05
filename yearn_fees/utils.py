@@ -278,4 +278,4 @@ def reports_from_block(block_number, vault=None, strategy=None) -> List[Contract
 
 
 def plural(word, num):
-    return f'{num} {word}' if num == 1 else f'{num} {words}'
+    return f'{num} {word}' if num == 1 else f'{num} {word}s'
