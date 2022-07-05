@@ -67,7 +67,7 @@ def start():
     silence_loggers()
 
     # send messages from workers into the main thread's console using `log`
-    console = Console()
+    console = Console(log_path=False)
     threading.Thread(target=console_thread, args=(console,), daemon=True).start()
 
     log(client.dashboard_link)
@@ -150,5 +150,5 @@ def load_transaction(tx):
                 duration=fees_assess.duration,
             )
 
-    skipped_msg = ', skipped {skipped} reports' if skipped > 0 else ''
+    skipped_msg = f", skipped {skipped} reports" if skipped > 0 else ""
     log(f"[green]reconciled {len(reports) - skipped} reports{skipped_msg} at {tx}")
