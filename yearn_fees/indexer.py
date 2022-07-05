@@ -1,21 +1,27 @@
-from cmath import e
-from collections import Counter
 import logging
+import threading
+import warnings
+from collections import Counter
+from datetime import datetime, timezone
 from decimal import Decimal
+from enum import Enum
 
 from ape import chain, networks
 from dask import distributed
 from rich.console import Console
 from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
+from toolz import unique
 
 from yearn_fees import utils
 from yearn_fees.assess import assess_fees
-from yearn_fees.models import Report, bind_db, db_session, select, ObjectNotFound
+from yearn_fees.models import ObjectNotFound, Report, bind_db, db_session, select
 from yearn_fees.traces import fees_from_trace
-import threading
-import warnings
-from datetime import datetime, timezone
-from toolz import unique
+
+
+class Status(Enum):
+    loaded = "green"
+    skipped = "yellow"
+    dropped = "red"
 
 
 class WorkerConnection(distributed.WorkerPlugin):
@@ -99,7 +105,6 @@ def load_transaction(tx):
     traces = utils.get_split_trace(tx)
 
     stats = Counter()
-    colors = {"loaded": "green", "dropped": "red", "skipped": "magenta"}
 
     for report, trace in zip(reports, traces):
         with db_session:
@@ -108,10 +113,7 @@ def load_transaction(tx):
             except ObjectNotFound:
                 pass
             else:
-                log(
-                    f"[yellow]report at {[report.block_number, report.log_index]} is already loaded"
-                )
-                stats["skipped"] += 1
+                stats[Status.skipped] += 1
                 continue
 
         timestamp = chain.blocks[report.block_number].timestamp
@@ -129,7 +131,7 @@ def load_transaction(tx):
         if fees_assess != fees_trace:
             log(f"[red]mismatch at {tx}")
             log(fees_assess.compare(fees_trace, decimals, output=False))
-            stats["dropped"] += 1
+            stats[Status.dropped] += 1
             continue
 
         with db_session:
@@ -157,10 +159,10 @@ def load_transaction(tx):
                 strategist_fee=Decimal(fees_assess.strategist_fee) / scale,
                 duration=fees_assess.duration,
             )
-            stats["loaded"] += 1
+            stats[Status.loaded] += 1
 
     stats = [
-        f'[{colors[stat]}]{stat} {utils.plural("report", num)}[/]'
+        f'[{stat.value}]{stat.name} {utils.plural("report", num)}[/]'
         for stat, num in stats.most_common()
     ]
     log(f"{', '.join(stats)} [yellow]at {tx}[/]")
