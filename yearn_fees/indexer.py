@@ -18,6 +18,14 @@ from yearn_fees.models import ObjectNotFound, Report, bind_db, db_session, selec
 from yearn_fees.traces import fees_from_trace
 
 
+FORBIDDEN_TXS = [
+    # https://github.com/ledgerwatch/erigon/issues/4637
+    "0xb9e6b6f275212824215e8f50818f12b37b7ca4c2e0b943785357c35b23743b94",
+    "0xd770356649f1e60e7342713d483bd8946f967e544db639bd056dfccc8d534d8e",
+    "0x9ef7a35012286fef17da12624aa124ebc785d9e7621e1fd538550d1209eb9f7d",
+]
+
+
 class Status(Enum):
     loaded = "green"
     skipped = "yellow"
@@ -101,6 +109,10 @@ def load_transaction(tx):
     """
     Index and load all reports from a transaction into the database.
     """
+    if tx in FORBIDDEN_TXS:
+        log(f"[bold red]forbidden tx {tx}")
+        return
+
     reports = utils.reports_from_tx(tx)
     traces = utils.get_split_trace(tx)
 
