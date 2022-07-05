@@ -1,3 +1,4 @@
+from cmath import e
 import logging
 from decimal import Decimal
 
@@ -8,11 +9,12 @@ from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn, Ti
 
 from yearn_fees import utils
 from yearn_fees.assess import assess_fees
-from yearn_fees.models import Report, bind_db, db_session, select
+from yearn_fees.models import Report, bind_db, db_session, select, ObjectNotFound
 from yearn_fees.traces import fees_from_trace
 import threading
 import warnings
 from datetime import datetime, timezone
+from toolz import unique
 
 
 class WorkerConnection(distributed.WorkerPlugin):
@@ -24,7 +26,7 @@ class WorkerConnection(distributed.WorkerPlugin):
 
 
 def silence_loggers():
-    warnings.filterwarnings("ignore")  # , r".*Connecting Geth plugin to non-Geth network.*")
+    warnings.filterwarnings("ignore")
     for logger in ["distributed.utils_perf", "distributed.worker_memory"]:
         logging.getLogger(logger).setLevel(logging.ERROR)
 
@@ -42,22 +44,23 @@ def plural(word, count):
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
-def get_unindexed_transaction_hashes():
+def get_unindexed_txs():
+    """
+    Find all transaction hashes which have unindexed reports.
+    """
     reports = utils.get_reports()
-    transactions = {log.transaction_hash.hex() for log in reports}
-
-    num_transactions = len(transactions)
+    unindexed_reports = {(report.block_number, report.log_index): report for report in reports}
 
     with db_session:
-        for tx_hash in select(report.transaction_hash for report in Report):
-            transactions.discard(tx_hash)
+        for row in Report.select():
+            unindexed_reports.pop((row.block_number, row.primary_key), None)
 
-    log(
-        f"[yellow]{len(reports)} reports spanning {num_transactions} transactions, {len(transactions)} unindexed"
-    )
+    num_txs = len(list(unique(report.transaction_hash.hex() for report in reports)))
+    unindexed_txs = list(unique(report.transaction_hash.hex() for report in unindexed_reports.values()))
+    log(f"[yellow]found {len(reports)} reports spanning {num_txs} transactions")
+    log(f"[yellow]indexing {len(unindexed_reports)} reports spanning {len(unindexed_txs)} transactions")
 
-    tx_height = {log.transaction_hash.hex(): log.block_number for log in reports}
-    return sorted(transactions, key=tx_height.get)
+    return unindexed_txs
 
 
 def start():
@@ -73,8 +76,8 @@ def start():
 
     log(client.dashboard_link)
 
-    unindexed = client.submit(get_unindexed_transaction_hashes).result()
-    tasks = client.map(load_transaction, unindexed)
+    unindexed_txs = client.submit(get_unindexed_txs).result()
+    tasks = client.map(load_transaction, unindexed_txs)
 
     progress = Progress(
         TimeElapsedColumn(),
@@ -84,7 +87,7 @@ def start():
         console=console,
     )
     with progress:
-        task = progress.add_task("index txs", total=len(unindexed))
+        task = progress.add_task("index txs", total=len(unindexed_txs))
         for result in distributed.as_completed(tasks):
             progress.update(task, advance=1)
 
@@ -97,6 +100,15 @@ def load_transaction(tx):
     traces = utils.get_split_trace(tx)
 
     for report, trace in zip(reports, traces):
+        with db_session:
+            try:
+                Report[report.block_number, report.log_index]
+            except ObjectNotFound:
+                pass
+            else:
+                log(f"[yellow]report at {[report.block_number, report.log_index]} is already loaded")
+                continue
+
         timestamp = chain.blocks[report.block_number].timestamp
         version = utils.version_from_report(report)
         decimals = utils.get_decimals(report.contract_address)
