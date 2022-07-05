@@ -1,4 +1,5 @@
 from cmath import e
+from collections import Counter
 import logging
 from decimal import Decimal
 
@@ -94,7 +95,9 @@ def load_transaction(tx):
     """
     reports = utils.reports_from_tx(tx)
     traces = utils.get_split_trace(tx)
-    skipped = 0
+
+    stats = Counter()
+    colors = {'loaded': 'green', 'dropped': 'red', 'skipped': 'magenta'}
 
     for report, trace in zip(reports, traces):
         with db_session:
@@ -104,7 +107,7 @@ def load_transaction(tx):
                 pass
             else:
                 log(f"[yellow]report at {[report.block_number, report.log_index]} is already loaded")
-                skipped += 1
+                stats['skipped'] += 1
                 continue
 
         timestamp = chain.blocks[report.block_number].timestamp
@@ -122,6 +125,7 @@ def load_transaction(tx):
         if fees_assess != fees_trace:
             log(f"[red]mismatch at {tx}")
             log(fees_assess.compare(fees_trace, decimals, output=False))
+            stats['dropped'] += 1
             continue
 
         with db_session:
@@ -149,6 +153,7 @@ def load_transaction(tx):
                 strategist_fee=Decimal(fees_assess.strategist_fee) / scale,
                 duration=fees_assess.duration,
             )
+            stats['loaded'] += 1
 
-    skipped_msg = f", skipped {skipped} reports" if skipped > 0 else ""
-    log(f"[green]reconciled {len(reports) - skipped} reports{skipped_msg} at {tx}")
+    stats = [f'[{colors[stat]}]{stat} {num} reports[/]' for stat, num in stats.most_common()]
+    log(f"{', '.join(stats)} [yellow]at {tx}[/]")
