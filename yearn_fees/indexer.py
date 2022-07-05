@@ -40,10 +40,6 @@ def log(message):
     distributed.Pub("console").put(message)
 
 
-def plural(word, count):
-    return f"{count} {word}" if count == 1 else f"{count} {word}s"
-
-
 def get_unindexed_txs():
     """
     Find all transaction hashes which have unindexed reports.
@@ -98,6 +94,7 @@ def load_transaction(tx):
     """
     reports = utils.reports_from_tx(tx)
     traces = utils.get_split_trace(tx)
+    skipped = 0
 
     for report, trace in zip(reports, traces):
         with db_session:
@@ -107,6 +104,7 @@ def load_transaction(tx):
                 pass
             else:
                 log(f"[yellow]report at {[report.block_number, report.log_index]} is already loaded")
+                skipped += 1
                 continue
 
         timestamp = chain.blocks[report.block_number].timestamp
@@ -152,4 +150,5 @@ def load_transaction(tx):
                 duration=fees_assess.duration,
             )
 
-    log(f"[green]reconciled {plural('report', len(reports))} at {tx}")
+    skipped_msg = ', skipped {skipped} reports' if skipped > 0 else ''
+    log(f"[green]reconciled {len(reports) - skipped} reports{skipped_msg} at {tx}")
