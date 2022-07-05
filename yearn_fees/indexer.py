@@ -58,7 +58,7 @@ def get_unindexed_txs():
     num_txs = len(list(unique(report.transaction_hash.hex() for report in reports)))
     unindexed_txs = list(unique(report.transaction_hash.hex() for report in unindexed_reports.values()))
     log(f"[yellow]found {len(reports)} reports spanning {num_txs} transactions")
-    log(f"[yellow]indexing {len(unindexed_reports)} reports spanning {len(unindexed_txs)} transactions")
+    log(f"[green]index {len(unindexed_reports)} reports spanning {len(unindexed_txs)} transactions")
 
     return unindexed_txs
 
