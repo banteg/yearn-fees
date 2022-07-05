@@ -24,5 +24,4 @@ class CompressedDisk(diskcache.Disk):
         return data
 
 
-size = 100 * 2**30  # 100 gb
-cache = diskcache.Cache("cache", size_limit=size, disk=CompressedDisk)
+cache = diskcache.Cache("cache", size_limit=20_000_000_000, disk=CompressedDisk)
