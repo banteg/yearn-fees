@@ -53,7 +53,9 @@ def get_unindexed_txs():
             unindexed_reports.pop((row.block_number, row.log_index), None)
 
     num_txs = len(list(unique(report.transaction_hash.hex() for report in reports)))
-    unindexed_txs = list(unique(report.transaction_hash.hex() for report in unindexed_reports.values()))
+    unindexed_txs = list(
+        unique(report.transaction_hash.hex() for report in unindexed_reports.values())
+    )
     log(f"[yellow]found {len(reports)} reports spanning {num_txs} transactions")
     log(f"[green]index {len(unindexed_reports)} reports spanning {len(unindexed_txs)} transactions")
 
@@ -97,7 +99,7 @@ def load_transaction(tx):
     traces = utils.get_split_trace(tx)
 
     stats = Counter()
-    colors = {'loaded': 'green', 'dropped': 'red', 'skipped': 'magenta'}
+    colors = {"loaded": "green", "dropped": "red", "skipped": "magenta"}
 
     for report, trace in zip(reports, traces):
         with db_session:
@@ -106,8 +108,10 @@ def load_transaction(tx):
             except ObjectNotFound:
                 pass
             else:
-                log(f"[yellow]report at {[report.block_number, report.log_index]} is already loaded")
-                stats['skipped'] += 1
+                log(
+                    f"[yellow]report at {[report.block_number, report.log_index]} is already loaded"
+                )
+                stats["skipped"] += 1
                 continue
 
         timestamp = chain.blocks[report.block_number].timestamp
@@ -125,7 +129,7 @@ def load_transaction(tx):
         if fees_assess != fees_trace:
             log(f"[red]mismatch at {tx}")
             log(fees_assess.compare(fees_trace, decimals, output=False))
-            stats['dropped'] += 1
+            stats["dropped"] += 1
             continue
 
         with db_session:
@@ -153,7 +157,10 @@ def load_transaction(tx):
                 strategist_fee=Decimal(fees_assess.strategist_fee) / scale,
                 duration=fees_assess.duration,
             )
-            stats['loaded'] += 1
+            stats["loaded"] += 1
 
-    stats = [f'[{colors[stat]}]{stat} {num} reports[/]' for stat, num in stats.most_common()]
+    stats = [
+        f'[{colors[stat]}]{stat} {utils.plural("report", num)}[/]'
+        for stat, num in stats.most_common()
+    ]
     log(f"{', '.join(stats)} [yellow]at {tx}[/]")

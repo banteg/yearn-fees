@@ -275,3 +275,7 @@ def reports_from_block(block_number, vault=None, strategy=None) -> List[Contract
         reports = [log for log in reports if log.strategy == strategy]
 
     return reports
+
+
+def plural(word, num):
+    return f'{num} {word}' if num == 1 else f'{num} {words}'
