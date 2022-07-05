@@ -53,7 +53,7 @@ def get_unindexed_txs():
 
     with db_session:
         for row in Report.select():
-            unindexed_reports.pop((row.block_number, row.primary_key), None)
+            unindexed_reports.pop((row.block_number, row.log_index), None)
 
     num_txs = len(list(unique(report.transaction_hash.hex() for report in reports)))
     unindexed_txs = list(unique(report.transaction_hash.hex() for report in unindexed_reports.values()))
