@@ -199,6 +199,16 @@ event StrategyAddedToQueue:
     strategy: indexed(address) # Address of the strategy that is added to the withdrawal queue
 
 
+event Fees:
+    gain: uint256
+    duration: uint256
+    total_debt: uint256
+    delegated_assets: uint256
+    management_fee: uint256
+    performance_fee: uint256
+    strategist_fee: uint256
+
+
 # NOTE: Track the total for overhead targeting purposes
 strategies: public(HashMap[address, StrategyParams])
 MAXIMUM_STRATEGIES: constant(uint256) = 20
@@ -1573,11 +1583,14 @@ def _assessFees(strategy: address, gain: uint256) -> uint256:
     # NOTE: In effect, this reduces overall share price by the combined fee
     # NOTE: may throw if Vault.totalAssets() > 1e64, or not called for more than a year
     precisionFactor: uint256 = self.precisionFactor
+    duration: uint256 = block.timestamp - self.strategies[strategy].lastReport
+    total_debt: uint256 = self.strategies[strategy].totalDebt
+    delegated_assets: uint256 = Strategy(strategy).delegatedAssets()
     management_fee: uint256 = (
         precisionFactor *
         (
-            (self.strategies[strategy].totalDebt - Strategy(strategy).delegatedAssets())
-            * (block.timestamp - self.strategies[strategy].lastReport)
+            (total_debt - delegated_assets)
+            * duration
             * self.managementFee
         )
         / MAX_BPS
@@ -1631,6 +1644,9 @@ def _assessFees(strategy: address, gain: uint256) -> uint256:
         # NOTE: Governance earns any dust leftover from flooring math above
         if self.balanceOf[self] > 0:
             self._transfer(self, self.rewards, self.balanceOf[self])
+
+    log Fees(gain, duration, total_debt, delegated_assets, management_fee, performance_fee, strategist_fee)
+
     return total_fee
 
 
