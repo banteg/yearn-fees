@@ -9,7 +9,7 @@ import json
 
 import click
 from ape import chain, networks
-from eth_utils import to_int
+from yearn_fees import fork
 from rich import print
 
 from yearn_fees import indexer, scanner
@@ -68,6 +68,12 @@ def dump_trace(tx):
 @cli.command(cls=MainnetCommand)
 def index():
     indexer.start()
+
+
+@cli.command("fork", cls=MainnetCommand)
+@click.argument("tx")
+def fork_version(tx):
+    fork.fork_tx(tx)
 
 
 @cli.command(cls=MainnetCommand)
