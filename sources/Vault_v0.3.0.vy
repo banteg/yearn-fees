@@ -193,7 +193,6 @@ event Fees:
     gain: uint256
     duration: uint256
     total_debt: uint256
-    delegated_assets: uint256
     management_fee: uint256
     performance_fee: uint256
     strategist_fee: uint256
@@ -1440,7 +1439,7 @@ def _assessFees(strategy: address, gain: uint256):
         if self.balanceOf[self] > 0:
             self._transfer(self, self.rewards, self.balanceOf[self])
 
-    log Fees(gain, duration, total_debt, 0, management_fee, performance_fee, strategist_fee)
+    log Fees(gain, duration, total_debt, management_fee, performance_fee, strategist_fee)
 
 
 @external
