@@ -1,0 +1,22 @@
+diff --git a/vyper/parser/function_definitions/parse_function.py b/vyper/parser/function_definitions/parse_function.py
+index f78d9fd8..31ee2b07 100644
+--- a/vyper/parser/function_definitions/parse_function.py
++++ b/vyper/parser/function_definitions/parse_function.py
+@@ -10,6 +10,7 @@ from vyper.parser.function_definitions.parse_internal_function import (  # NOTE
+ from vyper.parser.memory_allocator import MemoryAllocator
+ from vyper.signatures import FunctionSignature
+ from vyper.utils import calc_mem_gas
++import sys
+ 
+ 
+ # Is a function the initializer?
+@@ -59,6 +60,9 @@ def parse_function(code, sigs, global_ctx, check_nonpayable, _vars=None):
+             code=code, sig=sig, context=context, check_nonpayable=check_nonpayable
+         )
+ 
++    if '_assessFees' in str(sig):
++        print({sig.name: {varname: varinfo.pos // 32 for varname, varinfo in context.vars.items()}}, file=sys.stderr)
++
+     o.context = context
+     o.total_gas = o.gas + calc_mem_gas(o.context.memory_allocator.size_of_mem)
+     o.func_name = sig.name
