@@ -1,9 +1,10 @@
 from ape import Contract
-from ape.contracts import ContractInstance, ContractLog
+from ape.contracts import ContractLog
+from rich import print
 from semantic_version import Version
 
 from yearn_fees.types import Fees
-from yearn_fees.utils import get_fee_config_at_report, reports_from_block, reports_from_tx, version_from_report
+from yearn_fees.utils import get_fee_config_at_report, reports_from_block, version_from_report
 
 
 def assess_fees(report: ContractLog) -> Fees:
@@ -35,7 +36,7 @@ def assess_fees(report: ContractLog) -> Fees:
             b = vault.lastReport(height=report.block_number)
             a = vault.lastReport(height=pre_height)
             duration = b - a
-    
+
     # 0.4.0 no fees are charged if there was no gain
     if version >= Version("0.4.0"):
         if report.gain == 0:
@@ -50,13 +51,23 @@ def assess_fees(report: ContractLog) -> Fees:
     # 0.3.5 read total debt and delegated assets from strategy
     if version >= Version("0.3.5"):
         total_debt = vault.strategies(strategy, height=pre_height).totalDebt
-        delegated_assets = strategy.delegatedAssets(height=pre_height)
-        total_assets = total_debt - delegated_assets
+        delegated_assets_pre = strategy.delegatedAssets(height=pre_height)
+        delegated_assets_post = strategy.delegatedAssets(height=report.block_number)
+        if delegated_assets_pre != 0 and delegated_assets_pre != delegated_assets_post:
+            print(
+                f"[orange_red1]delegated assets might've changed in the harvest block, the data may be inaccruate"
+            )
+        total_assets = total_debt - delegated_assets_pre
     # 0.3.4 don't charge the management fee on delegated assets
     elif version >= Version("0.3.4"):
         total_debt = vault.totalDebt(height=pre_height)
-        delegated_assets = vault.delegatedAssets(height=pre_height)
-        total_assets = total_debt - delegated_assets
+        delegated_assets_pre = vault.delegatedAssets(height=pre_height)
+        delegated_assets_post = vault.delegatedAssets(height=report.block_number)
+        if delegated_assets_pre != 0 and delegated_assets_pre != delegated_assets_post:
+            print(
+                f"[orange]delegated assets might've changed in the harvest block, the data may be inaccruate"
+            )
+        total_assets = total_debt - delegated_assets_pre
     # 0.3.1 charge the management fee amount in strategies instead of vault assets
     elif version >= Version("0.3.1"):
         total_assets = vault.totalDebt(height=pre_height)
@@ -67,7 +78,7 @@ def assess_fees(report: ContractLog) -> Fees:
 
     MAX_BPS = 10_000
     conf = get_fee_config_at_report(report)
-    
+
     # 0.3.5 is the only verison that uses a precision factor
     if version == Version("0.3.5"):
         prec = 10 ** (18 - vault.decimals())
