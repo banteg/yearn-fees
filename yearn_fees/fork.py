@@ -4,6 +4,7 @@ from typing import Optional
 from ape import Contract, chain, config, networks
 from ape_foundry.providers import FoundryForkConfig
 from ape_vyper import compiler
+from eth_utils import encode_hex, keccak
 from ethpm_types import ContractType
 from rich import print
 from rich.progress import track
@@ -96,10 +97,13 @@ def fork_tx(tx):
             chain.provider.web3.eth.send_raw_transaction(txn.serialize_transaction())
 
         # replay tx with higher gas limit to accomodate logs
-        replay_tx = block_transactions[tx_index]
-        replay_tx.gas_limit += 1_000_000
-        chain.provider.unlock_account(replay_tx.sender)
-        chain.provider.web3.eth.send_transaction(replay_tx.dict())
+        # replay_tx = block_transactions[tx_index]
+        # replay_tx.gas_limit += 1_000_000
+        # chain.provider.unlock_account(replay_tx.sender)
+        # chain.provider.web3.eth.send_transaction(replay_tx.dict())
+        chain.provider.web3.eth.send_raw_transaction(
+            block_transactions[tx_index].serialize_transaction()
+        )
 
         # advance one block and make sure we at the original height and timestamp
         chain.mine()
