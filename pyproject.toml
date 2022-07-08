@@ -2,7 +2,7 @@
 line-length = 100
 
 [tool.isort]
-line_length = 100
+profile = "black"
 
 [tool.poetry]
 name = "yearn-fees"
