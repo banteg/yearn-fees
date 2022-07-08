@@ -1,6 +1,7 @@
 import dataclasses
+from bisect import bisect_right
 from decimal import Decimal
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 from ape.contracts import ContractLog
 from eth_utils.humanize import humanize_seconds
@@ -8,19 +9,12 @@ from pydantic import BaseModel
 from rich import box
 from rich.console import Console
 from rich.table import Table
-from toolz import last
 
 
-class AsofDict(dict):
-    """
-    Allows you to get the closest previous item.
-
-    >>> AsofDict({1: 'a', 3: 'b'})[2]
-    'a'
-    """
-
-    def __getitem__(self, key):
-        return super().__getitem__(last(item for item in sorted(self) if item <= key))
+def asof(stack, needle):
+    keys = sorted(stack)
+    index = bisect_right(keys, needle) - 1
+    return stack[keys[index]]
 
 
 class Fees(BaseModel):
@@ -99,15 +93,15 @@ LogPosition = Tuple[int, int]  # block_number, log_index
 
 
 class FeeHistory(BaseModel):
-    management_fee: AsofDict[LogPosition, int]
-    performance_fee: AsofDict[LogPosition, int]
-    strategist_fee: Dict[str, AsofDict[LogPosition, int]]
+    management_fee: Dict[LogPosition, int]
+    performance_fee: Dict[LogPosition, int]
+    strategist_fee: Dict[str, Dict[LogPosition, int]]
 
     def at_pos(self, pos: LogPosition, strategy: str):
         return FeeConfiguration(
-            management_fee=self.management_fee[pos],
-            performance_fee=self.performance_fee[pos],
-            strategist_fee=self.strategist_fee[strategy][pos],
+            management_fee=asof(self.management_fee, pos),
+            performance_fee=asof(self.performance_fee, pos),
+            strategist_fee=asof(self.strategist_fee[strategy], pos),
         )
 
     def at_report(self, report: ContractLog):
