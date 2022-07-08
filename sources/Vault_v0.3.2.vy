@@ -201,7 +201,6 @@ event Fees:
     gain: uint256
     duration: uint256
     total_debt: uint256
-    delegated_assets: uint256
     management_fee: uint256
     performance_fee: uint256
     strategist_fee: uint256
@@ -1526,7 +1525,6 @@ def _assessFees(strategy: address, gain: uint256):
         / MAX_BPS
         / SECS_PER_YEAR
     )
-    governance_fee: uint256 = management_fee
     performance_fee: uint256 = 0
     strategist_fee: uint256 = 0  # Only applies in certain conditions
 
@@ -1536,8 +1534,9 @@ def _assessFees(strategy: address, gain: uint256):
         # NOTE: Unlikely to throw unless strategy reports >1e72 harvest profit
         strategist_fee = gain * self.strategies[strategy].performanceFee / MAX_BPS
         # NOTE: Unlikely to throw unless strategy reports >1e72 harvest profit
-        peformance_fee += gain * self.performanceFee / MAX_BPS
-        governance_fee += performance_fee
+        performance_fee += gain * self.performanceFee / MAX_BPS
+
+    governance_fee: uint256 = management_fee + performance_fee
 
     # NOTE: This must be called prior to taking new collateral,
     #       or the calculation will be wrong!
