@@ -96,7 +96,7 @@ def fork_tx(tx):
         for txn in track(block_transactions[:tx_index], "replay txs"):
             chain.provider.web3.eth.send_raw_transaction(txn.serialize_transaction())
 
-        # replay tx with higher gas limit to accomodate logs
+        # replay tx with higher gas limit to accommodate logs
         replay_tx = block_transactions[tx_index]
         replay_tx.gas_limit += 1_000_000
         chain.provider.unlock_account(replay_tx.sender)
