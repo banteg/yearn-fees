@@ -12,7 +12,7 @@ from toolz import concat, groupby, unique, valfilter
 
 from yearn_fees import traces
 from yearn_fees.cache import cache
-from yearn_fees.types import FeeConfiguration, FeeHistory, Trace
+from yearn_fees.types import FeeConfiguration, FeeHistory, Trace, asof
 
 # sort key for logs/events
 LOG_KEY = attrgetter("block_number", "log_index")
@@ -208,7 +208,9 @@ def get_vault_fee_history(vault: str) -> FeeHistory:
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
     # and is also inherited on migration
     for log in vault.StrategyMigrated.range(*get_range()):
-        strategist_fee[log.newVersion][LOG_KEY(log)] = strategist_fee[log.oldVersion][LOG_KEY(log)]
+        strategist_fee[log.newVersion][LOG_KEY(log)] = asof(
+            strategist_fee[log.oldVersion], LOG_KEY(log)
+        )
 
     return FeeHistory(
         management_fee=management_fee,
