@@ -1,10 +1,9 @@
 import json
-from typing import Optional
+from typing import List, Optional
 
 from ape import Contract, chain, config, networks
 from ape_foundry.providers import FoundryForkConfig
 from ape_vyper import compiler
-from eth_utils import encode_hex, keccak
 from ethpm_types import ContractType
 from rich import print
 from rich.progress import track
@@ -57,7 +56,7 @@ def compile_version(version):
     return source
 
 
-def fork_tx(tx):
+def fork_tx(tx) -> List[Fees]:
     receipt = chain.provider.get_transaction(tx)
     timestamp = chain.blocks[receipt.block_number].timestamp
     block_transactions = chain.blocks[receipt.block_number].transactions
@@ -65,6 +64,7 @@ def fork_tx(tx):
 
     reports = utils.reports_from_tx(tx)
     versions = [utils.version_from_report(r) for r in reports]
+    results = []
 
     # fork at a previous block
     config._plugin_configs["foundry"].port = 7545
@@ -99,6 +99,7 @@ def fork_tx(tx):
         # replay tx with higher gas limit to accommodate logs
         replay_tx = block_transactions[tx_index]
         replay_tx.gas_limit += 1_000_000
+        replay_tx.chain_id = chain.chain_id  # ape bug?
         chain.provider.unlock_account(replay_tx.sender)
         replay_tx_hash = chain.provider.web3.eth.send_transaction(replay_tx.dict())
 
@@ -128,3 +129,5 @@ def fork_tx(tx):
             print(repr(fees))
 
             fees.as_table(Contract(event.contract_address).decimals(), "fork")
+
+    return results
