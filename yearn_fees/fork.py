@@ -97,20 +97,17 @@ def fork_tx(tx):
             chain.provider.web3.eth.send_raw_transaction(txn.serialize_transaction())
 
         # replay tx with higher gas limit to accomodate logs
-        # replay_tx = block_transactions[tx_index]
-        # replay_tx.gas_limit += 1_000_000
-        # chain.provider.unlock_account(replay_tx.sender)
-        # chain.provider.web3.eth.send_transaction(replay_tx.dict())
-        chain.provider.web3.eth.send_raw_transaction(
-            block_transactions[tx_index].serialize_transaction()
-        )
+        replay_tx = block_transactions[tx_index]
+        replay_tx.gas_limit += 1_000_000
+        chain.provider.unlock_account(replay_tx.sender)
+        replay_tx_hash = chain.provider.web3.eth.send_transaction(replay_tx.dict())
 
         # advance one block and make sure we at the original height and timestamp
         chain.mine()
         assert chain.blocks.head.timestamp == timestamp
         assert chain.blocks.height == receipt.block_number
 
-        fork_receipt = chain.provider.web3.eth.get_transaction_receipt(tx)
+        fork_receipt = chain.provider.web3.eth.get_transaction_receipt(replay_tx_hash)
         assert fork_receipt["status"], "tx failed"
 
         for report, version in zip(reports, versions):
