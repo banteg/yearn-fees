@@ -12,7 +12,7 @@ from toolz import concat, groupby, unique, valfilter
 
 from yearn_fees import traces
 from yearn_fees.cache import cache
-from yearn_fees.types import AsofDict, FeeConfiguration, FeeHistory, Trace, TraceFrame
+from yearn_fees.types import FeeConfiguration, FeeHistory, Trace
 
 # sort key for logs/events
 LOG_KEY = attrgetter("block_number", "log_index")
@@ -199,7 +199,7 @@ def get_vault_fee_history(vault: str) -> FeeHistory:
     performance_fee = {
         LOG_KEY(log): log.performanceFee for log in vault.UpdatePerformanceFee.range(*get_range())
     }
-    strategist_fee = defaultdict(AsofDict)
+    strategist_fee = defaultdict(dict)
     # strategy performance fee is set on init
     for log in vault.StrategyAdded.range(*get_range()):
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
@@ -211,8 +211,8 @@ def get_vault_fee_history(vault: str) -> FeeHistory:
         strategist_fee[log.newVersion][LOG_KEY(log)] = strategist_fee[log.oldVersion][LOG_KEY(log)]
 
     return FeeHistory(
-        management_fee=AsofDict(management_fee),
-        performance_fee=AsofDict(performance_fee),
+        management_fee=management_fee,
+        performance_fee=performance_fee,
         strategist_fee=strategist_fee,
     )
 
@@ -278,4 +278,4 @@ def reports_from_block(block_number, vault=None, strategy=None) -> List[Contract
 
 
 def plural(word, num):
-    return f'{num} {word}' if num == 1 else f'{num} {word}s'
+    return f"{num} {word}" if num == 1 else f"{num} {word}s"
