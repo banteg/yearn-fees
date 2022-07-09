@@ -73,6 +73,15 @@ event Approval:
     value: uint256
 
 
+event Fees:
+    gain: uint256
+    duration: uint256
+    total_debt: uint256
+    management_fee: uint256
+    performance_fee: uint256
+    strategist_fee: uint256
+
+
 name: public(String[64])
 symbol: public(String[32])
 decimals: public(uint256)
@@ -1414,11 +1423,15 @@ def _assessFees(strategy: address, gain: uint256):
     # Issue new shares to cover fees
     # NOTE: In effect, this reduces overall share price by the combined fee
     # NOTE: may throw if Vault.totalAssets() > 1e64, or not called for more than a year
-    governance_fee: uint256 = (
-        (self.totalDebt * (block.timestamp - self.lastReport) * self.managementFee)
+    total_debt: uint256 = self.totalDebt
+    duration: uint256 = block.timestamp - self.lastReport
+    management_fee: uint256 = (
+        (total_debt * duration * self.managementFee)
         / MAX_BPS
         / SECS_PER_YEAR
     )
+    performance_fee: uint256 = 0
+    governance_fee: uint256 = management_fee
     strategist_fee: uint256 = 0  # Only applies in certain conditions
 
     # NOTE: Applies if Strategy is not shutting down, or it is but all debt paid off
@@ -1429,7 +1442,8 @@ def _assessFees(strategy: address, gain: uint256):
             gain * self.strategies[strategy].performanceFee
         ) / MAX_BPS
         # NOTE: Unlikely to throw unless strategy reports >1e72 harvest profit
-        governance_fee += gain * self.performanceFee / MAX_BPS
+        performance_fee = gain * self.performanceFee / MAX_BPS
+        governance_fee += performance_fee
 
     # NOTE: This must be called prior to taking new collateral,
     #       or the calculation will be wrong!
@@ -1448,6 +1462,8 @@ def _assessFees(strategy: address, gain: uint256):
         # NOTE: Governance earns any dust leftover from flooring math above
         if self.balanceOf[self] > 0:
             self._transfer(self, self.rewards, self.balanceOf[self])
+
+    log Fees(gain, duration, total_debt, management_fee, performance_fee, strategist_fee)
 
 
 @external
