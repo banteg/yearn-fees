@@ -17,6 +17,8 @@ def compare_methods(tx, only_version=None):
     forked = fork.fork_tx(tx)
     print(f"[green]found {len(reports)} reports at {tx}")
 
+    results = []
+
     for report, trace, fork_report in zip(reports, traces, forked):
         version = utils.version_from_report(report)
         if only_version and version != only_version:
@@ -33,7 +35,10 @@ def compare_methods(tx, only_version=None):
         fees_trace = fees_from_trace(trace, version)
         fees_trace.as_table(decimals, title="trace fees")
 
-        compare_as_table({"assess": fees_calc, "trace": fees_trace, "fork": fork_report}, decimals)
+        results.append({"assess": fees_calc, "trace": fees_trace, "fork": fork_report})
+        compare_as_table(results[-1], decimals)
+    
+    return results
 
 
 def compare_as_table(fees: Dict[str, Fees], decimals: int, output=True):
