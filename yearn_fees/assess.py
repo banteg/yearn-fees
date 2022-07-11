@@ -4,7 +4,11 @@ from rich import print
 from semantic_version import Version
 
 from yearn_fees.types import Fees
-from yearn_fees.utils import get_fee_config_at_report, reports_from_block, version_from_report
+from yearn_fees.utils import (
+    get_fee_config_at_report,
+    reports_from_block,
+    version_from_report,
+)
 
 
 def assess_fees(report: ContractLog) -> Fees:
@@ -55,7 +59,7 @@ def assess_fees(report: ContractLog) -> Fees:
         delegated_assets_post = strategy.delegatedAssets(height=report.block_number)
         if delegated_assets_pre != 0 and delegated_assets_pre != delegated_assets_post:
             print(
-                f"[orange_red1]delegated assets might've changed in the harvest block, the data may be inaccruate"
+                f"[orange_red1]delegated assets changed in the harvest block, the data may be inaccruate"
             )
         total_assets = total_debt - delegated_assets_pre
     # 0.3.4 don't charge the management fee on delegated assets
@@ -65,7 +69,7 @@ def assess_fees(report: ContractLog) -> Fees:
         delegated_assets_post = vault.delegatedAssets(height=report.block_number)
         if delegated_assets_pre != 0 and delegated_assets_pre != delegated_assets_post:
             print(
-                f"[orange]delegated assets might've changed in the harvest block, the data may be inaccruate"
+                f"[orange_red1]delegated assets changed in the harvest block, the data may be inaccruate"
             )
         total_assets = total_debt - delegated_assets_pre
     # 0.3.1 charge the management fee amount in strategies instead of vault assets
