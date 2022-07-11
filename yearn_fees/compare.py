@@ -64,7 +64,7 @@ def compare_as_table(fees: Dict[str, Fees], decimals: int, output=True):
         "management_fee",
         "performance_fee",
         "strategist_fee",
-        "total_fee",
+        # "total_fee",
         "gain",
         "duration",
     ]:

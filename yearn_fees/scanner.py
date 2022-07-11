@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from rich import print
 
 from yearn_fees.assess import assess_fees
+from yearn_fees.compare import compare_as_table
 from yearn_fees.memory_layout import MemoryLayout
 from yearn_fees.traces import fees_from_trace
 from yearn_fees.types import Trace
@@ -103,7 +104,7 @@ def find_duration_from_tx(tx, version=None, quiet=False):
         print(f"[green]{tx} report {i}")
         print(f"version {vers}")
         fees_trace = fees_from_trace(trace, vers)
-        fees_assess.compare(fees_trace, decimals)
+        compare_as_table({'assess': fees_assess, 'trace': fees_trace}, decimals)
 
         for res in find_value(trace, duration):
             results[res] += 1
