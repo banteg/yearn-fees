@@ -90,7 +90,7 @@ def fees_from_trace(trace: Trace, version: str) -> Fees:
             data["management_fee"] = layout[19835]["governance_fee"]
             data["performance_fee"] = layout[19846]["governance_fee"] - data["management_fee"]
         except KeyError:
-            data["management_fee"] = 0
+            data["management_fee"] = data["governance_fee"]
             data["performance_fee"] = 0
         # no accurate way to get duration for 0.3.3
 
