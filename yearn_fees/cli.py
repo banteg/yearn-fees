@@ -9,11 +9,9 @@ import json
 
 import click
 from ape import chain, networks
-from yearn_fees import fork
 from rich import print
 
-from yearn_fees import indexer, scanner
-from yearn_fees.assess import assess_fees
+from yearn_fees import fork, indexer, scanner, utils
 from yearn_fees.compare import compare_methods
 from yearn_fees.memory_layout import MEMORY_LAYOUT
 from yearn_fees.utils import get_sample_txs, get_trace
@@ -73,6 +71,12 @@ def index():
 @cli.command("fork", cls=MainnetCommand)
 @click.argument("tx")
 def fork_version(tx):
+    reports = utils.reports_from_tx(tx)
+    fees = fork.fork_tx(tx)
+    for fee, report in zip(fees, reports):
+        decimals = utils.get_decimals(report.contract_address)
+        version = utils.version_from_report(report)
+        fee.as_table(decimals, title=version)
     fork.fork_tx(tx)
 
 
