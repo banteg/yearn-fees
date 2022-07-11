@@ -92,5 +92,23 @@ def find_duration(version_or_tx, samples):
         scanner.find_duration_from_tx(tx)
 
 
+@cli.command(cls=MainnetCommand)
+def dropped():
+    from yearn_fees.compare import compare_methods
+    from rich.progress import track
+    import json
+    from os.path import exists
+
+    dropped = open('dropped-txs.csv').read().splitlines()
+    for tx in track(dropped):
+        path = f'traces/{tx}.json'
+        if exists(path):
+            continue
+        data = compare_methods(tx)
+        data = [{key: value.dict() for key, value in item.items()} for item in data]
+        with open(path, 'wt') as f:
+            json.dump(data, f, default=str, indent=2)
+
+
 if __name__ == "__main__":
     cli()
