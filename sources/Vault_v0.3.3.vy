@@ -1529,7 +1529,7 @@ def _assessFees(strategy: address, gain: uint256):
     duration: uint256 = block.timestamp - self.lastReport
     total_debt: uint256 = self.totalDebt
     management_fee: uint256 = (
-        total_debt * duration * self.managementFee)
+        total_debt * duration * self.managementFee
         / MAX_BPS
         / SECS_PER_YEAR
     )
@@ -1540,9 +1540,7 @@ def _assessFees(strategy: address, gain: uint256):
     # NOTE: No fee is taken when a Strategy is unwinding it's position, until all debt is paid
     if gain > 0:
         # NOTE: Unlikely to throw unless strategy reports >1e72 harvest profit
-        strategist_fee = (
-            gain * self.strategies[strategy].performanceFee
-        ) / MAX_BPS
+        strategist_fee = gain * self.strategies[strategy].performanceFee / MAX_BPS
         # NOTE: Unlikely to throw unless strategy reports >1e72 harvest profit
         performance_fee += gain * self.performanceFee / MAX_BPS
 
