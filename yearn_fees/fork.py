@@ -106,19 +106,18 @@ def fork_tx(tx) -> List[Fees]:
         assert chain.blocks.height == receipt.block_number
 
         fork_receipt = chain.provider.web3.eth.get_transaction_receipt(replay_tx_hash)
+        fork_logs = fork_receipt["logs"]
         assert fork_receipt["status"], "tx failed"
 
         for report, version in zip(reports, versions):
+            contract_logs = [log for log in fork_logs if log["address"] == report.contract_address]
             event = next(
                 chain.provider.network.ecosystem.decode_logs(
-                    contracts[version].events["Fees"],
-                    [
-                        log
-                        for log in fork_receipt["logs"]
-                        if log["address"] == report.contract_address
-                    ],
+                    contracts[version].events["Fees"], contract_logs
                 )
             )
+            # offset the remaining logs so we don't read the same log twice
+            fork_logs = [log for log in fork_logs if log["logIndex"] > event.log_index]
             results.append(Fees.parse_obj(event.event_arguments))
 
     return results
