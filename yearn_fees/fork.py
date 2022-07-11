@@ -1,12 +1,11 @@
 import json
 from typing import List, Optional
 
-from ape import Contract, chain, config, networks
+from ape import chain, config, networks
 from ape_foundry.providers import FoundryForkConfig
 from ape_vyper import compiler
 from ethpm_types import ContractType
 from rich import print
-from rich.progress import track
 
 from yearn_fees import compile_sources, utils
 from yearn_fees.cache import cache
@@ -82,10 +81,8 @@ def fork_tx(tx) -> List[Fees]:
         # replace runtime bytecode
         for report, version in zip(reports, versions):
             contracts[version] = compile_version(version)
-            print(f"[magenta]replaced code for {report.contract_address} {version}")
             chain.provider._make_request(
-                "anvil_setCode",
-                [report.contract_address, contracts[version].code],
+                "anvil_setCode", [report.contract_address, contracts[version].code]
             )
 
         # disable automine so all transactions end up in the same block
@@ -93,12 +90,12 @@ def fork_tx(tx) -> List[Fees]:
         chain.pending_timestamp = timestamp
 
         # replay the block till our transaction
-        for txn in track(block_transactions[:tx_index], "replay txs"):
+        for txn in block_transactions[:tx_index]:
             chain.provider.web3.eth.send_raw_transaction(txn.serialize_transaction())
 
         # replay tx with higher gas limit to accommodate logs
         replay_tx = block_transactions[tx_index]
-        replay_tx.gas_limit += 1_000_000
+        replay_tx.gas_limit += 100_000
         replay_tx.chain_id = chain.chain_id  # ape bug?
         chain.provider.unlock_account(replay_tx.sender)
         replay_tx_hash = chain.provider.web3.eth.send_transaction(replay_tx.dict())
@@ -122,12 +119,6 @@ def fork_tx(tx) -> List[Fees]:
                     ],
                 )
             )
-
-            print(f"[bold green]recovered event[/]", event.event_arguments)
-
-            fees = Fees.parse_obj(event.event_arguments)
-            print(repr(fees))
-
-            fees.as_table(Contract(event.contract_address).decimals(), "fork")
+            results.append(Fees.parse_obj(event.event_arguments))
 
     return results
