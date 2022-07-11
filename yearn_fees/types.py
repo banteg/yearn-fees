@@ -51,34 +51,6 @@ class Fees(BaseModel):
         console = Console()
         console.print(table)
 
-    def compare(self, other, decimals, output=True):
-        assert isinstance(other, Fees), "can only compare to Fees"
-        table = Table(box=box.SIMPLE)
-        table.add_column("name")
-        table.add_column("assess", justify="right")
-        table.add_column("trace", justify="right")
-        table.add_column("test")
-
-        for name in ["management_fee", "performance_fee", "strategist_fee", "total_fee", "gain"]:
-            table.add_row(
-                name,
-                format(Decimal(getattr(self, name)) / 10**decimals, f",.{decimals}f"),
-                format(Decimal(getattr(other, name)) / 10**decimals, f",.{decimals}f"),
-                f"[green]✔︎" if getattr(self, name) == getattr(other, name) else "[red]✘",
-            )
-        table.add_row(
-            "duration",
-            format(self.duration, ",d") if self.duration is not None else "--",
-            format(other.duration, ",d") if other.duration is not None else "--",
-            f"[green]✔︎" if self.duration == other.duration else "[red]✘",
-        )
-
-        if output:
-            console = Console()
-            console.print(table)
-        else:
-            return table
-
 
 class FeeConfiguration(BaseModel):
     management_fee: int
