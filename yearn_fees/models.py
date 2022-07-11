@@ -2,7 +2,15 @@ import os
 from datetime import datetime
 from decimal import Decimal
 
-from pony.orm import Database, Optional, PrimaryKey, Required, ObjectNotFound, db_session, select
+from pony.orm import (
+    Database,
+    ObjectNotFound,
+    Optional,
+    PrimaryKey,
+    Required,
+    db_session,
+    select,
+)
 
 db = Database()
 

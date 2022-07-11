@@ -9,14 +9,19 @@ from enum import Enum
 from ape import chain, networks
 from dask import distributed
 from rich.console import Console
-from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn, TimeRemainingColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
 from toolz import unique
 
 from yearn_fees import utils
 from yearn_fees.assess import assess_fees
 from yearn_fees.models import ObjectNotFound, Report, bind_db, db_session, select
 from yearn_fees.traces import fees_from_trace
-
 
 FORBIDDEN_TXS = [
     # https://github.com/ledgerwatch/erigon/issues/4637
