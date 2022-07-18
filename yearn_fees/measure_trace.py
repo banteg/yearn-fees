@@ -44,7 +44,7 @@ def measure_dropped():
     with networks.parse_network_choice(":mainnet:geth"):
         reports = fetch_all_reports()
 
-    txs = list(unique(log.transaction_hash for log in fetch_all_reports()))
+    txs = list(unique(log.transaction_hash for log in reports))
     blocks = {log.transaction_hash: log.block_number for log in reports}
 
     print(f"{len(txs)} txs")
