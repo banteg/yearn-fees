@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from ape import Contract, chain, convert
 from ape.contracts import ContractLog
-from ape.types import AddressType
+from ape.types import AddressType, LogFilter
 from semantic_version import Version
 from toolz import concat, groupby, unique, valfilter
 
@@ -76,14 +76,15 @@ def vault_selectors(event_name):
     )
 
 
-@cache.memoize()
 def fetch_all_reports() -> List[ContractLog]:
     """
     Fetch all StrategyReported events for all endorsed vaults.
     """
     vaults = get_endorsed_vaults(flat=True)
-    vault = Contract(vaults[0])
-    logs = vault.StrategyReported.range(chain.blocks.height, extra_addresses=vaults[1:])
+    abis = vault_selectors('StrategyReported')
+    topics = [[LogFilter.from_event(abi).topic_filter[0] for abi in abis]]
+    filt = LogFilter(addresses=vaults, events=abis, topic_filter=topics)
+    logs = chain.provider.get_contract_logs(filt)
     return list(logs)
 
 
