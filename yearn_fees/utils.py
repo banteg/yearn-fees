@@ -81,16 +81,9 @@ def fetch_all_reports() -> List[ContractLog]:
     """
     Fetch all StrategyReported events for all endorsed vaults.
     """
-    all_vaults = get_endorsed_vaults(flat=True)
-    strategy_reported = vault_selectors("StrategyReported")
-    logs = chain.provider.get_contract_logs(
-        address=all_vaults,
-        abi=strategy_reported,
-        start_block=0,
-        stop_block=chain.blocks.height,
-        block_page_size=1_000_000,
-    )
-
+    vaults = get_endorsed_vaults(flat=True)
+    vault = Contract(vaults[0])
+    logs = vault.StrategyReported.range(chain.blocks.height, extra_addresses=vaults[1:])
     return list(logs)
 
 
