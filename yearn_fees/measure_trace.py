@@ -1,8 +1,16 @@
+import json
 import sys
 import zlib
+from time import perf_counter
 
 import httpx
-from time import perf_counter
+from ape import networks
+from dask.distributed import Client, LocalCluster
+from rich.console import Console
+from rich.progress import Progress
+from toolz import unique
+
+from yearn_fees.utils import fetch_all_reports
 
 
 def stream_trace(tx):
@@ -32,6 +40,33 @@ def stream_trace(tx):
     }
 
 
+def measure_dropped():
+    with networks.parse_network_choice(":mainnet:geth"):
+        txs = list(unique(log.transaction_hash for log in fetch_all_reports()))
+
+    print(f"{len(txs)} txs")
+    f = open("dropped-trace-sizes.jsonl", "wt")
+
+    console = Console()
+    cluster = LocalCluster()
+    client = Client(cluster)
+    print(client.dashboard_link)
+
+    with Progress(console=console) as progress:
+        task = progress.add_task("measure", total=len(txs))
+        for fut in client.map(stream_trace, txs):
+            res = fut.result()
+            f.write(json.dumps(res) + "\n")
+            f.flush()
+            progress.update(task, advance=1)
+            console.log(res)
+
+    f.close()
+
+
 if __name__ == "__main__":
-    res = stream_trace(sys.argv[1])
-    print(res)
+    if len(sys.argv) == 2:
+        res = stream_trace(sys.argv[1])
+        print(res)
+    else:
+        measure_dropped()
