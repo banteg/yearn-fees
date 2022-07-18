@@ -12,7 +12,7 @@ from toolz import concat, groupby, unique, valfilter
 
 from yearn_fees import traces
 from yearn_fees.cache import cache
-from yearn_fees.types import FeeConfiguration, FeeHistory, Trace, asof
+from yearn_fees.types import FeeConfiguration, FeeHistory, LogPosition, Trace, asof
 
 # sort key for logs/events
 LOG_KEY = attrgetter("block_number", "log_index")
@@ -32,14 +32,12 @@ def get_registry():
     return Contract(latest_registry)
 
 
-@cache.memoize()
 def get_vaults_by_version() -> Dict[str, List[str]]:
     registry = get_registry()
-    logs = registry.NewVault.range(*get_range())
-    vaults = groupby(attrgetter("api_version"), logs)
+    vaults = groupby(attrgetter("api_version"), registry.NewVault)
 
     return {
-        version: [log.vault for log in vaults[version]]
+        version: [log['vault'] for log in vaults[version]]
         for version in vaults
         if Version(version) >= Version("0.3.0")
     }
@@ -188,6 +186,54 @@ def txs_with_multiple_strategy_harvests():
     return valfilter(
         lambda logs: len(logs) >= 2,
         groupby(lambda log: (log.transaction_hash, log.strategy), reports),
+    )
+
+
+def get_lifecycle_history(report: ContractLog) -> Dict[LogPosition, ContractLog]:
+    """
+    vault last report is set:
+    - initialize = block.timestamp
+    - report = block.timestamp
+
+    strategy last report is set:
+    - add strategy = block.timestamp
+    - migrate strategy = block.timestamp
+    - report = block.timestamp
+    """
+    version = Version(version_from_report(report))
+    vault = Contract(report.contract_address)
+
+    reports = get_reports(report.contract_address)
+    additions = vault.StrategyAdded.range(
+        *get_range(), event_parameters={"strategy": report.strategy}
+    )
+    migrations = list(vault.StrategyMigrated.range(
+        *get_range(), event_parameters={"newVersion": report.strategy}
+    ))
+    print(migrations)
+    last_report_updates = {}
+
+    for log in reports:
+        if version >= Version("0.3.5"):
+            if log.strategy != report.strategy:
+                continue
+        last_report_updates[LOG_KEY(log)] = log
+
+    for log in additions:
+        last_report_updates[LOG_KEY(log)] = log
+
+    for log in migrations:
+        last_report_updates[LOG_KEY(log)] = log
+
+    return {key: last_report_updates[key] for key in sorted(last_report_updates)}
+
+
+def duration_from_report(report: ContractLog) -> int:
+    history = get_lifecycle_history(report)
+    last_event = asof(history, (report.block_number, report.log_index - 1))
+    return (
+        chain.blocks[report.block_number].timestamp
+        - chain.blocks[last_event.block_number].timestamp
     )
 
 
