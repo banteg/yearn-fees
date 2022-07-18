@@ -42,20 +42,24 @@ def stream_trace(tx):
 
 def measure_dropped():
     with networks.parse_network_choice(":mainnet:geth"):
-        txs = list(unique(log.transaction_hash for log in fetch_all_reports()))
+        reports = fetch_all_reports()
+
+    txs = list(unique(log.transaction_hash for log in fetch_all_reports()))
+    blocks = {log.transaction_hash: log.block_number for log in reports}
 
     print(f"{len(txs)} txs")
     f = open("dropped-trace-sizes.jsonl", "wt")
 
     console = Console()
-    cluster = LocalCluster()
+    cluster = LocalCluster(n_workers=32)
     client = Client(cluster)
     print(client.dashboard_link)
 
     with Progress(console=console) as progress:
         task = progress.add_task("measure", total=len(txs))
-        for fut in client.map(stream_trace, txs):
+        for tx, fut in zip(txs, client.map(stream_trace, txs)):
             res = fut.result()
+            res['block_number'] = blocks[tx]
             f.write(json.dumps(res) + "\n")
             f.flush()
             progress.update(task, advance=1)
