@@ -811,6 +811,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "msgspec"
+version = "0.7.1"
+description = "A fast and friendly JSON/MessagePack library, with optional schema validation"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[[package]]
 name = "multiaddr"
 version = "0.0.9"
 description = "Python implementation of jbenet's multiaddr"
@@ -1572,7 +1580,7 @@ python-versions = "*"
 
 [[package]]
 name = "web3"
-version = "5.29.2"
+version = "5.30.0"
 description = "Web3.py"
 category = "main"
 optional = false
@@ -1583,6 +1591,7 @@ aiohttp = ">=3.7.4.post0,<4"
 eth-abi = ">=2.0.0b6,<3.0.0"
 eth-account = ">=0.5.7,<0.6.0"
 eth-hash = {version = ">=0.2.0,<1.0.0", extras = ["pycryptodome"]}
+eth-rlp = "<0.3"
 eth-tester = {version = "v0.6.0-beta.6", extras = ["py-evm"], optional = true, markers = "extra == \"tester\""}
 eth-typing = ">=2.0.0,<3.0.0"
 eth-utils = ">=1.9.5,<2.0.0"
@@ -1656,7 +1665,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "c3f75a01051fefc934502d79322fe7a8e98033ef7ea07ce5901d038d1fecabf4"
+content-hash = "9940854184b2a0f46bcdb5222450ecfd167900d107b02afc2bd2d45c248b3231"
 
 [metadata.files]
 aiohttp = [
@@ -2160,6 +2169,30 @@ msgpack = [
     {file = "msgpack-1.0.4-cp39-cp39-win32.whl", hash = "sha256:fb62ea4b62bfcb0b380d5680f9a4b3f9a2d166d9394e9bbd9666c0ee09a3645c"},
     {file = "msgpack-1.0.4-cp39-cp39-win_amd64.whl", hash = "sha256:4d5834a2a48965a349da1c5a79760d94a1a0172fbb5ab6b5b33cbf8447e109ce"},
     {file = "msgpack-1.0.4.tar.gz", hash = "sha256:f5d869c18f030202eb412f08b28d2afeea553d6613aee89e200d7aca7ef01f5f"},
+]
+msgspec = [
+    {file = "msgspec-0.7.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:4c76fff9dba14477d9be5085c5925f54ae358d15505004b7bbdfc6da7bc7ecc1"},
+    {file = "msgspec-0.7.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:555b5311a8f9908896dbd02361140cdaf4dcc8c73149c0c1162e13b0558e6dbd"},
+    {file = "msgspec-0.7.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c77d5b557b3f92d686e671f396b46832117a15b23f3060a809c64a757844c505"},
+    {file = "msgspec-0.7.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:87a23e0cbc946c8542e7936556351245a14ed301aa13a61aa62fcca07ad890aa"},
+    {file = "msgspec-0.7.1-cp310-cp310-musllinux_1_1_aarch64.whl", hash = "sha256:2be49a102142570d5b878d47e1e9d4897a64697c928cca8be57db491e15847cb"},
+    {file = "msgspec-0.7.1-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:053a300b43028baa138edee85b0a40a4bba1661b8f349d0294a7ca67ad2adda4"},
+    {file = "msgspec-0.7.1-cp310-cp310-win_amd64.whl", hash = "sha256:79190031a61fc98ec87be64eed0b5ffcb88e390beae2454a27b67c3a68d3fd23"},
+    {file = "msgspec-0.7.1-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:b584ba5762ee218f646790678811f7c80f8a565929fb09e03e9b241239424577"},
+    {file = "msgspec-0.7.1-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:853ff2f4d8508d18f07c14af8149b50dac781262abe1c3cac2a0c0bbeca08883"},
+    {file = "msgspec-0.7.1-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:550d007775592f65b55e6c1326b483f6e186769df57fc793112f179657450ec5"},
+    {file = "msgspec-0.7.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f492de69eb4098363759af1868f99804da50525d323df370126207bf857b63b6"},
+    {file = "msgspec-0.7.1-cp38-cp38-musllinux_1_1_aarch64.whl", hash = "sha256:405ccd250e139f970610ba02fca113eb1459b4b27d4cd331f89e2e86ccd7feb6"},
+    {file = "msgspec-0.7.1-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:f0f19c2ad47bd2ccc5d7ad3ed01939380f42ed99160b3a8112ce0e9dc8c1fad0"},
+    {file = "msgspec-0.7.1-cp38-cp38-win_amd64.whl", hash = "sha256:9518207d65ba52ea342e9c85aa5a5bdb42b6d9903fc816c09c2b8d16f8759176"},
+    {file = "msgspec-0.7.1-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:669fae2dd87cff6515af943f8db5974310d3f87dd7741d2904372c2cfe39b2fc"},
+    {file = "msgspec-0.7.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:996bc9363ad1b7e128087f24a522e1bc36cb6c9d25c5a643a3901f85a9afd2f8"},
+    {file = "msgspec-0.7.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:72e042415aba55ddbea5d361ddec2c92acc09f839d7a653c54e1256392717436"},
+    {file = "msgspec-0.7.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dacfa497d25f7deb29f4d8969d331586fe77599a0000f20431095bd38db65ea7"},
+    {file = "msgspec-0.7.1-cp39-cp39-musllinux_1_1_aarch64.whl", hash = "sha256:eda4acf1945ee507bd29f12f4f0c6cb13c39d9020954fa256f2e7b667210ab64"},
+    {file = "msgspec-0.7.1-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:436220596186559f07d9db3e249e9e02cd745d0fb8e546183580b6f9f45881fd"},
+    {file = "msgspec-0.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:596ecb68c75d78d7c86bf3f7ecd742b345bb3ef448483a520aa10be782b1f3b1"},
+    {file = "msgspec-0.7.1.tar.gz", hash = "sha256:af3210976e499f94d06ae3a7d3a6e7c94874b51f3012405f39fee3a849edaad7"},
 ]
 multiaddr = [
     {file = "multiaddr-0.0.9-py2.py3-none-any.whl", hash = "sha256:5c0f862cbcf19aada2a899f80ef896ddb2e85614e0c8f04dd287c06c69dac95b"},
@@ -2867,8 +2900,8 @@ wcwidth = [
     {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},
 ]
 web3 = [
-    {file = "web3-5.29.2-py3-none-any.whl", hash = "sha256:57d64f3bfe1eced1fc48629916bd6679844d26d9186f7cfb140e9c5e75864147"},
-    {file = "web3-5.29.2.tar.gz", hash = "sha256:f37b01f3dc32010b176cef01c2107bc25b7cf94b63c3269d4ec52d7e5ded9a36"},
+    {file = "web3-5.30.0-py3-none-any.whl", hash = "sha256:664fbb668522874a8bb15ec06c605f1e0c754bbc0d7a040ee47536c648b46af0"},
+    {file = "web3-5.30.0.tar.gz", hash = "sha256:e141d90408fd9fe5156e2ef22884a160bef8bfd55e6cecd51181af3162ea84dd"},
 ]
 websockets = [
     {file = "websockets-9.1-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:d144b350045c53c8ff09aa1cfa955012dd32f00c7e0862c199edcabb1a8b32da"},

@@ -51,7 +51,7 @@ def measure_dropped():
     f = open("dropped-trace-sizes.jsonl", "wt")
 
     console = Console()
-    cluster = LocalCluster(n_workers=32)
+    cluster = LocalCluster(n_workers=16)
     client = Client(cluster)
     print(client.dashboard_link)
 

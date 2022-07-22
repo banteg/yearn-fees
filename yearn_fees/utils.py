@@ -2,7 +2,7 @@ import random
 from collections import defaultdict
 from functools import lru_cache
 from operator import attrgetter
-from typing import Dict, List
+from typing import Dict, Iterator, List
 
 from ape import Contract, chain
 from ape.contracts import ContractLog
@@ -12,7 +12,7 @@ from toolz import concat, groupby, unique, valfilter
 
 from yearn_fees import traces
 from yearn_fees.cache import cache
-from yearn_fees.types import FeeConfiguration, FeeHistory, LogPosition, Trace, asof
+from yearn_fees.types import FeeConfiguration, FeeHistory, LogPosition, TraceFrame, asof
 
 # sort key for logs/events
 LOG_KEY = attrgetter("block_number", "log_index")
@@ -267,23 +267,16 @@ def get_fee_config_at_report(report: ContractLog) -> FeeConfiguration:
     return fee_conifg.at_report(report)
 
 
-@cache.memoize()
-def _get_trace(tx: str) -> Trace:
-    # use the lowest-level method available to bypass slow web3.py middlewares
-    resp = chain.provider.web3.provider.make_request("debug_traceTransaction", [tx])
-    trace = Trace.parse_obj(resp["result"]["structLogs"])
-
-    return trace
-
-
-def get_trace(tx) -> Trace:
+def get_trace(tx) -> Iterator[TraceFrame]:
     if isinstance(tx, bytes):
         tx = tx.hex()
 
-    return _get_trace(tx)
+    frames = chain.provider.stream_request("debug_traceTransaction", [tx], "result.structLogs.item")
+    for frame in frames:
+        yield TraceFrame.parse(frame)
 
 
-def get_split_trace(tx) -> List[Trace]:
+def get_split_trace(tx) -> List[List[TraceFrame]]:
     if isinstance(tx, bytes):
         tx = tx.hex()
     trace = get_trace(tx)

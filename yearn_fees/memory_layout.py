@@ -1,7 +1,8 @@
+from typing import List
 from rich.console import Console
 from rich.table import Table
 
-from yearn_fees.types import Trace
+from yearn_fees.types import TraceFrame
 
 # fmt: off
 # output by a modified vyper compiler
@@ -42,7 +43,7 @@ class MemoryLayout(dict):
     Pivots a trace to (pc -> name -> memory value).
     """
 
-    def __init__(self, trace: Trace, version: str):
+    def __init__(self, trace: List[TraceFrame], version: str):
         self._memory_layout = {
             key: value
             for key, value in MEMORY_LAYOUT[version]["_assessFees"].items()

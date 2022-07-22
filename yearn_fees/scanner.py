@@ -9,7 +9,7 @@ from yearn_fees.assess import assess_fees
 from yearn_fees.compare import compare_as_table
 from yearn_fees.memory_layout import MemoryLayout
 from yearn_fees.traces import fees_from_trace
-from yearn_fees.types import Trace
+from yearn_fees.types import TraceFrame
 from yearn_fees.utils import (
     get_decimals,
     get_reports,
@@ -47,7 +47,7 @@ def find_value(trace, value) -> List[MatchedValue]:
     return results
 
 
-def display_trace(trace: Trace, version, fees):
+def display_trace(trace: List[TraceFrame], version, fees):
 
     layout = MemoryLayout(trace, version)
     highlight = dict(

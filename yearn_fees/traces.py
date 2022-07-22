@@ -1,5 +1,5 @@
 import dataclasses
-from typing import List
+from typing import Iterator, List
 
 from ape import Contract
 from ape.contracts import ContractLog
@@ -10,7 +10,7 @@ from semantic_version import Version
 
 from yearn_fees import utils
 from yearn_fees.memory_layout import PROGRAM_COUNTERS, MemoryLayout
-from yearn_fees.types import Fees, Trace
+from yearn_fees.types import Fees, TraceFrame
 
 
 @dataclasses.dataclass
@@ -33,7 +33,7 @@ class ReportMetadata:
         )
 
 
-def split_trace(trace: Trace, reports: List[ContractLog]) -> List[Trace]:
+def split_trace(trace: Iterator[TraceFrame], reports: List[ContractLog]) -> List[List[TraceFrame]]:
     """
     Splits a trace into chunks covering _assessFees.
     """
@@ -43,15 +43,19 @@ def split_trace(trace: Trace, reports: List[ContractLog]) -> List[Trace]:
     meta = next(report_metadata)
     start = None
 
+    part = []
     for i, frame in enumerate(trace):
         # for start we find a JUMPDEST where we enter _assessFees
         if start is None and frame.op == "JUMPDEST" and frame.pc == meta.jumpdest:
             start = i
 
+        if start:
+            part.append(frame)
+
         # for end this method is not reliable, since the function can terminate early
         # instead, we look for the StrategyReported event
         if start and frame.op == "LOG2" and meta.topic in frame.stack:
-            parts.append(trace[start:i])
+            parts.append(part)
             start = None
             try:
                 meta = next(report_metadata)
@@ -61,7 +65,7 @@ def split_trace(trace: Trace, reports: List[ContractLog]) -> List[Trace]:
     return parts
 
 
-def fees_from_trace(trace: Trace, version: str) -> Fees:
+def fees_from_trace(trace: List[TraceFrame], version: str) -> Fees:
     """
     Recover fees from trace frames. The trace must be already split.
     The program counters are carefully selected from `yearn-fees layout`.

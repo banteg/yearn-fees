@@ -1,6 +1,7 @@
 import dataclasses
 from bisect import bisect_right
 from decimal import Decimal
+from pickletools import string1
 from typing import Dict, Iterator, List, Tuple
 
 from ape.contracts import ContractLog
@@ -9,6 +10,7 @@ from pydantic import BaseModel
 from rich import box
 from rich.console import Console
 from rich.table import Table
+from msgspec import Struct
 
 
 def asof(stack, needle):
@@ -80,41 +82,22 @@ class FeeHistory(BaseModel):
         return self.at_pos((report.block_number, report.log_index), report.strategy)
 
 
-@dataclasses.dataclass()
-class TraceFrame:
+class TraceFrame(Struct):
     """
     A modified version of `evm_trace.TraceFrame` with integers
     in stack/memory and no gas, gas_cost, depth, storage fields.
     """
 
     pc: int
-    op: str
+    op: string1
     stack: List[int]
     memory: List[int]
 
-    def __post_init__(self):
-        self.stack = [int(v, 16) for v in self.stack]
-        self.memory = [int(v, 16) for v in self.memory]
-
     @classmethod
-    def parse_obj(cls, obj):
-        class_fields = {f.name for f in dataclasses.fields(cls)}
-        return cls(**{k: v for k, v in obj.items() if k in class_fields})
-
-
-class Trace(list):
-    """
-    `Trace.parse_obj(trace['structLogs'])`
-    """
-
-    @classmethod
-    def parse_obj(cls, obj) -> List[TraceFrame]:
-        return cls(TraceFrame.parse_obj(item) for item in obj)
-
-    def scan(self, pc) -> Iterator[TraceFrame]:
-        for frame in self:
-            if frame.pc == pc:
-                yield frame
-
-    def dict(self):
-        return [dataclasses.asdict(frame) for frame in self]
+    def parse(cls, obj):
+        return cls(
+            pc=obj["pc"],
+            op=obj["op"],
+            stack=[int(v, 16) for v in obj["stack"]],
+            memory=[int(v, 16) for v in obj["memory"]],
+        )
