@@ -4,9 +4,9 @@ from functools import lru_cache
 from operator import attrgetter
 from typing import Dict, List
 
-from ape import Contract, chain, convert
+from ape import Contract, chain
 from ape.contracts import ContractLog
-from ape.types import AddressType, LogFilter
+from ape.types import LogFilter
 from semantic_version import Version
 from toolz import concat, groupby, unique, valfilter
 
@@ -27,9 +27,7 @@ def get_registry():
     """
     Get the latest vault registry on mainnet.
     """
-    latest_registry = convert("v2.registry.ychad.eth", AddressType)
-
-    return Contract(latest_registry)
+    return Contract("v2.registry.ychad.eth")
 
 
 def get_vaults_by_version() -> Dict[str, List[str]]:
@@ -37,7 +35,7 @@ def get_vaults_by_version() -> Dict[str, List[str]]:
     vaults = groupby(attrgetter("api_version"), registry.NewVault)
 
     return {
-        version: [log['vault'] for log in vaults[version]]
+        version: [log["vault"] for log in vaults[version]]
         for version in vaults
         if Version(version) >= Version("0.3.0")
     }
@@ -81,7 +79,7 @@ def fetch_all_reports() -> List[ContractLog]:
     Fetch all StrategyReported events for all endorsed vaults.
     """
     vaults = get_endorsed_vaults(flat=True)
-    abis = vault_selectors('StrategyReported')
+    abis = vault_selectors("StrategyReported")
     topics = [[LogFilter.from_event(abi).topic_filter[0] for abi in abis]]
     filt = LogFilter(addresses=vaults, events=abis, topic_filter=topics)
     logs = chain.provider.get_contract_logs(filt)
@@ -199,12 +197,15 @@ def get_lifecycle_history(report: ContractLog) -> Dict[LogPosition, ContractLog]
 
     reports = get_reports(report.contract_address)
     additions = vault.StrategyAdded.range(
-        *get_range(), event_parameters={"strategy": report.strategy}
+        chain.blocks.height,
+        search_topics={"strategy": report["strategy"]},
     )
-    migrations = list(vault.StrategyMigrated.range(
-        *get_range(), event_parameters={"newVersion": report.strategy}
-    ))
-    print(migrations)
+    migrations = list(
+        vault.StrategyMigrated.range(
+            chain.blocks.height,
+            search_topics={"newVersion": report["strategy"]},
+        )
+    )
     last_report_updates = {}
 
     for log in reports:
@@ -233,21 +234,17 @@ def duration_from_report(report: ContractLog) -> int:
 
 def get_vault_fee_history(vault: str) -> FeeHistory:
     vault = Contract(vault)
-    management_fee = {
-        LOG_KEY(log): log.managementFee for log in vault.UpdateManagementFee.range(*get_range())
-    }
-    performance_fee = {
-        LOG_KEY(log): log.performanceFee for log in vault.UpdatePerformanceFee.range(*get_range())
-    }
+    management_fee = {LOG_KEY(log): log.managementFee for log in vault.UpdateManagementFee}
+    performance_fee = {LOG_KEY(log): log.performanceFee for log in vault.UpdatePerformanceFee}
     strategist_fee = defaultdict(dict)
     # strategy performance fee is set on init
-    for log in vault.StrategyAdded.range(*get_range()):
+    for log in vault.StrategyAdded:
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
     # on update strategy fee
-    for log in vault.StrategyUpdatePerformanceFee.range(*get_range()):
+    for log in vault.StrategyUpdatePerformanceFee:
         strategist_fee[log.strategy][LOG_KEY(log)] = log.performanceFee
     # and is also inherited on migration
-    for log in vault.StrategyMigrated.range(*get_range()):
+    for log in vault.StrategyMigrated:
         strategist_fee[log.newVersion][LOG_KEY(log)] = asof(
             strategist_fee[log.oldVersion], LOG_KEY(log)
         )

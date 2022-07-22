@@ -23,22 +23,22 @@ def assess_fees(report: ContractLog) -> Fees:
     duration = 0
     if version >= Version("0.4.0"):
         # 0.4.0 disallow harvesting the strategy twice in a block
-        a = vault.strategies(strategy, height=pre_height)
-        b = vault.strategies(strategy, height=report.block_number)
+        a = vault.strategies(strategy, block_identifier=pre_height)
+        b = vault.strategies(strategy, block_identifier=report.block_number)
         duration = b.lastReport - a.lastReport
     elif version >= Version("0.3.5"):
         # the duration would be zero after the first harvest of the same strategy in the block
         block_reports = reports_from_block(report.block_number, strategy=report.strategy)
         if block_reports.index(report) == 0:
-            a = vault.strategies(strategy, height=pre_height)
-            b = vault.strategies(strategy, height=report.block_number)
+            a = vault.strategies(strategy, block_identifier=pre_height)
+            b = vault.strategies(strategy, block_identifier=report.block_number)
             duration = b.lastReport - a.lastReport
     else:
         # the duration would be zero after the first harvest of the same vault in the block
         block_reports = reports_from_block(report.block_number, vault=vault.address)
         if block_reports.index(report) == 0:
-            b = vault.lastReport(height=report.block_number)
-            a = vault.lastReport(height=pre_height)
+            b = vault.lastReport(block_identifier=report.block_number)
+            a = vault.lastReport(block_identifier=pre_height)
             duration = b - a
 
     # 0.4.0 no fees are charged if there was no gain
@@ -54,9 +54,9 @@ def assess_fees(report: ContractLog) -> Fees:
 
     # 0.3.5 read total debt and delegated assets from strategy
     if version >= Version("0.3.5"):
-        total_debt = vault.strategies(strategy, height=pre_height).totalDebt
-        delegated_assets_pre = strategy.delegatedAssets(height=pre_height)
-        delegated_assets_post = strategy.delegatedAssets(height=report.block_number)
+        total_debt = vault.strategies(strategy, block_identifier=pre_height).totalDebt
+        delegated_assets_pre = strategy.delegatedAssets(block_identifier=pre_height)
+        delegated_assets_post = strategy.delegatedAssets(block_identifier=report.block_number)
         if delegated_assets_pre != 0 and delegated_assets_pre != delegated_assets_post:
             print(
                 f"[orange_red1]delegated assets changed in the harvest block, the data may be inaccruate"
@@ -64,9 +64,9 @@ def assess_fees(report: ContractLog) -> Fees:
         total_assets = total_debt - delegated_assets_pre
     # 0.3.4 don't charge the management fee on delegated assets
     elif version >= Version("0.3.4"):
-        total_debt = vault.totalDebt(height=pre_height)
-        delegated_assets_pre = vault.delegatedAssets(height=pre_height)
-        delegated_assets_post = vault.delegatedAssets(height=report.block_number)
+        total_debt = vault.totalDebt(block_identifier=pre_height)
+        delegated_assets_pre = vault.delegatedAssets(block_identifier=pre_height)
+        delegated_assets_post = vault.delegatedAssets(block_identifier=report.block_number)
         if delegated_assets_pre != 0 and delegated_assets_pre != delegated_assets_post:
             print(
                 f"[orange_red1]delegated assets changed in the harvest block, the data may be inaccruate"
@@ -74,9 +74,9 @@ def assess_fees(report: ContractLog) -> Fees:
         total_assets = total_debt - delegated_assets_pre
     # 0.3.1 charge the management fee amount in strategies instead of vault assets
     elif version >= Version("0.3.1"):
-        total_assets = vault.totalDebt(height=pre_height)
+        total_assets = vault.totalDebt(block_identifier=pre_height)
     elif version >= Version("0.3.0"):
-        total_assets = vault.totalAssets(height=pre_height)
+        total_assets = vault.totalAssets(block_identifier=pre_height)
     else:
         raise ValueError("invalid version %s", version)
 
