@@ -24,7 +24,7 @@ from hexbytes import HexBytes
 
 
 # fmt: off
-# opcodes grouped by how many items they pop from the stack
+# opcodes grouped by number of items they pop from the stack
 POPCODES = {
     1: ["EXTCODEHASH", "ISZERO", "NOT", "BALANCE", "CALLDATALOAD", "EXTCODESIZE", "BLOCKHASH", "POP", "MLOAD", "SLOAD", "JUMP", "SELFDESTRUCT"],
     2: ["SHL", "SHR", "SAR", "REVERT", "ADD", "MUL", "SUB", "DIV", "SDIV", "MOD", "SMOD", "EXP", "SIGNEXTEND", "LT", "GT", "SLT", "SGT", "EQ", "AND", "XOR", "OR", "BYTE", "SHA3", "MSTORE", "MSTORE8", "SSTORE", "JUMPI", "LOG0", "RETURN"],
@@ -110,9 +110,13 @@ def dec_hook(type: Type, obj: Any) -> Any:
         return HexBytes(decode_hex(obj))
 
 
-def display(vm: VMTrace, offset=0, compare=None):
+def display(vm: VMTrace, offset=0, compare=None, call_target=None):
     memory = Memory()
     stack = Stack()
+
+    if call_target:
+        rich.print(f"[bold red]{call_target}")
+        call_target = None
 
     def extend_memory(offset, size):
         memory.extend(offset, size)
@@ -161,8 +165,8 @@ def display(vm: VMTrace, offset=0, compare=None):
                 exit(1)
 
         if op.op in ["CALL", "DELEGATECALL", "STATICCALL"]:
-            addr = decode_single("address", encode_single("uint256", stack.values[-2][1]))
-            rich.print(f"[bold yellow]{op.op} ADDR {addr}")
+            call_target = decode_single("address", encode_single("uint256", stack.values[-2][1]))
+            rich.print(f"[bold yellow]{op.op} ADDR {call_target}")
             rich.print(f'{"    " * offset}pc={op.pc} op={op.op} off_w={op.ex}')
 
         # stack
@@ -179,7 +183,7 @@ def display(vm: VMTrace, offset=0, compare=None):
         # subcalls
         if op.sub:
             rich.print(f"[bold red]{op.op} has {len(op.sub.ops)} subtraces")
-            display(op.sub, offset=offset + 1, compare=compare)
+            display(op.sub, offset=offset + 1, compare=compare, call_target=call_target)
 
 
 decoder = msgspec.json.Decoder(VMTrace, dec_hook=dec_hook)
