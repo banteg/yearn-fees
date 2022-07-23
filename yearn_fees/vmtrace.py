@@ -23,6 +23,23 @@ from eth_utils import decode_hex, encode_hex
 from hexbytes import HexBytes
 
 
+# fmt: off
+# opcodes grouped by how many items they pop from the stack
+POPCODES = {
+    1: ["EXTCODEHASH", "ISZERO", "NOT", "BALANCE", "CALLDATALOAD", "EXTCODESIZE", "BLOCKHASH", "POP", "MLOAD", "SLOAD", "JUMP", "SELFDESTRUCT"],
+    2: ["SHL", "SHR", "SAR", "REVERT", "ADD", "MUL", "SUB", "DIV", "SDIV", "MOD", "SMOD", "EXP", "SIGNEXTEND", "LT", "GT", "SLT", "SGT", "EQ", "AND", "XOR", "OR", "BYTE", "SHA3", "MSTORE", "MSTORE8", "SSTORE", "JUMPI", "LOG0", "RETURN"],
+    3: ["RETURNDATACOPY", "ADDMOD", "MULMOD", "CALLDATACOPY", "CODECOPY", "CREATE"],
+    4: ["CREATE2", "EXTCODECOPY"],
+    6: ["STATICCALL", "DELEGATECALL"],
+    7: ["CALL", "CALLCODE"]
+}
+# fmt: on
+POPCODES = {op: n for n in POPCODES for op in POPCODES[n]}
+POPCODES.update({f"LOG{n}": n + 2 for n in range(1, 5)})
+POPCODES.update({f"SWAP{i}": i + 1 for i in range(1, 17)})
+POPCODES.update({f"DUP{i}": i for i in range(1, 17)})
+
+
 class uint256(int):
     pass
 
@@ -149,7 +166,7 @@ def display(vm: VMTrace, offset=0, compare=None):
             rich.print(f'{"    " * offset}pc={op.pc} op={op.op} off_w={op.ex}')
 
         # stack
-        if num_pop := OP_POP.get(op.op):
+        if num_pop := POPCODES.get(op.op):
             stack.pop_ints(num_pop)
 
         for item in op.ex.push:
@@ -167,67 +184,3 @@ def display(vm: VMTrace, offset=0, compare=None):
 
 decoder = msgspec.json.Decoder(VMTrace, dec_hook=dec_hook)
 encoder = msgspec.json.Encoder(enc_hook=enc_hook)
-
-
-OP_POP = {
-    "SHL": 2,
-    "SHR": 2,
-    "SAR": 2,
-    "EXTCODEHASH": 1,
-    "CREATE2": 4,
-    "STATICCALL": 6,
-    "RETURNDATACOPY": 3,
-    "REVERT": 2,
-    "DELEGATECALL": 6,
-    "ADD": 2,
-    "MUL": 2,
-    "SUB": 2,
-    "DIV": 2,
-    "SDIV": 2,
-    "MOD": 2,
-    "SMOD": 2,
-    "ADDMOD": 3,
-    "MULMOD": 3,
-    "EXP": 2,
-    "SIGNEXTEND": 2,
-    "LT": 2,
-    "GT": 2,
-    "SLT": 2,
-    "SGT": 2,
-    "EQ": 2,
-    "ISZERO": 1,
-    "AND": 2,
-    "XOR": 2,
-    "OR": 2,
-    "NOT": 1,
-    "BYTE": 2,
-    "SHA3": 2,
-    "BALANCE": 1,
-    "CALLDATALOAD": 1,
-    "CALLDATACOPY": 3,
-    "CODECOPY": 3,
-    "EXTCODESIZE": 1,
-    "EXTCODECOPY": 4,
-    "BLOCKHASH": 1,
-    "POP": 1,
-    "MLOAD": 1,
-    "MSTORE": 2,
-    "MSTORE8": 2,
-    "SLOAD": 1,
-    "SSTORE": 2,
-    "JUMP": 1,
-    "JUMPI": 2,
-    "LOG0": 2,
-    "LOG1": 3,
-    "LOG2": 4,
-    "LOG3": 5,
-    "LOG4": 6,
-    "CREATE": 3,
-    "CALL": 7,
-    "CALLCODE": 7,
-    "RETURN": 2,
-    "SELFDESTRUCT": 1,
-}
-OP_POP.update({f"SWAP{i}": i + 1 for i in range(1, 17)})
-OP_POP.update({f"DUP{i}": i for i in range(1, 17)})
-print(OP_POP)
