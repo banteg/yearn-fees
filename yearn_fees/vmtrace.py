@@ -1,9 +1,24 @@
-# ported from https://docs.rs/web3/latest/web3/types/struct.VMTrace.html
+"""
+Replay vmTrace and recover memory and stack values at each step of execution.
+
+References:
+    https://docs.rs/web3/latest/web3/types/struct.VMTrace.html
+    https://github.com/ledgerwatch/erigon/blob/devel/core/vm/instructions.go
+    https://github.com/ethereumbook/ethereumbook/blob/develop/13evm.asciidoc
+    https://medium.com/coinmonks/ethereum-virtual-machine-evm-how-does-it-work-part-2-4198401d2a11
+    https://hackernoon.com/getting-deep-into-evm-how-ethereum-works-backstage-ac7efa1f0015
+    https://github.com/ledgerwatch/erigon/blob/devel/cmd/rpcdaemon/commands/trace_adhoc.go#L460
+"""
+
 from __future__ import annotations
 
 from typing import Any, List, Optional, Type
 
 import msgspec
+import rich
+from eth.vm.memory import Memory
+from eth.vm.stack import Stack
+from eth_abi import decode_single, encode_single
 from eth_utils import decode_hex, encode_hex
 from hexbytes import HexBytes
 
@@ -28,6 +43,10 @@ class VMOperation(msgspec.Struct):
     """Information concerning the execution of the operation."""
     sub: Optional[VMTrace]
     """Subordinate trace of the CALL/CREATE if applicable."""
+    op: str
+    """Opcode that is being called."""
+    idx: str
+    """Index in the tree."""
 
 
 class VMExecutedOperation(msgspec.Struct):
@@ -74,5 +93,141 @@ def dec_hook(type: Type, obj: Any) -> Any:
         return HexBytes(decode_hex(obj))
 
 
+def display(vm: VMTrace, offset=0, compare=None):
+    memory = Memory()
+    stack = Stack()
+
+    def extend_memory(offset, size):
+        memory.extend(offset, size)
+
+    def write_memory(offset, data):
+        extend_memory(offset, len(data))
+        memory.write(offset, len(data), data)
+
+    for op in vm.ops:
+        print("-" * 80)
+        rich.print(f"{hex(op.pc):>4} ({op.pc})| {op.op}")
+        rich.print(f"[yellow]stack ({len(stack.values)} values)")
+        for i, (t, v) in enumerate(reversed(stack.values)):
+            val = encode_single("uint256", v)
+            print(f"{hex(i)[2:]:>4}| {val.hex()}")
+
+        rich.print(f"[magenta]memory ({len(memory) // 32} words)")
+        for i in range(0, len(memory), 32):
+            mem = memory.read_bytes(i * 32, 32).ljust(32, b"\x00")
+            print(f"{hex(i)[2:]:>4}| {mem.hex()}")
+
+        # rich.print(f'VMTRACE {op}')
+        if compare:
+            other = next(compare)
+            # rich.print(f'DEBUGTRACE {other}')
+            assert op.op == other.op and op.pc == other.pc
+            # rich.print(f"[bold green]compare memory")
+
+            a = [
+                memory.read_bytes(i * 32, 32).ljust(32, b"\x00") for i, _ in enumerate(other.memory)
+            ]
+            b = other.memory[:]
+            if a != b:
+                rich.print(f"[red]MEMORY MISMATCH AT[/] {op}")
+                rich.print(f"a: {reversed(a)}")
+                rich.print(f"b: {reversed(b)}")
+                exit(1)
+
+            # rich.print(f"[bold green]compare stack")
+            a = [i[1] for i in stack.values]
+            b = [int(i.hex(), 16) for i in other.stack]
+            if a != b:
+                rich.print(f"[red]STACK MISMATCH AT[/] {op}")
+                rich.print(f"a: {a}")
+                rich.print(f"b: {b}")
+                exit(1)
+
+        if op.op in ["CALL", "DELEGATECALL", "STATICCALL"]:
+            addr = decode_single("address", encode_single("uint256", stack.values[-2][1]))
+            rich.print(f"[bold yellow]{op.op} ADDR {addr}")
+            rich.print(f'{"    " * offset}pc={op.pc} op={op.op} off_w={op.ex}')
+
+        # stack
+        if num_pop := OP_POP.get(op.op):
+            stack.pop_ints(num_pop)
+
+        for item in op.ex.push:
+            stack.push_int(item)
+
+        # memory
+        if op.ex.mem:
+            write_memory(op.ex.mem.off, op.ex.mem.data)
+
+        # subcalls
+        if op.sub:
+            rich.print(f"[bold red]{op.op} has {len(op.sub.ops)} subtraces")
+            display(op.sub, offset=offset + 1, compare=compare)
+
+
 decoder = msgspec.json.Decoder(VMTrace, dec_hook=dec_hook)
 encoder = msgspec.json.Encoder(enc_hook=enc_hook)
+
+
+OP_POP = {
+    "SHL": 2,
+    "SHR": 2,
+    "SAR": 2,
+    "EXTCODEHASH": 1,
+    "CREATE2": 4,
+    "STATICCALL": 6,
+    "RETURNDATACOPY": 3,
+    "REVERT": 2,
+    "DELEGATECALL": 6,
+    "ADD": 2,
+    "MUL": 2,
+    "SUB": 2,
+    "DIV": 2,
+    "SDIV": 2,
+    "MOD": 2,
+    "SMOD": 2,
+    "ADDMOD": 3,
+    "MULMOD": 3,
+    "EXP": 2,
+    "SIGNEXTEND": 2,
+    "LT": 2,
+    "GT": 2,
+    "SLT": 2,
+    "SGT": 2,
+    "EQ": 2,
+    "ISZERO": 1,
+    "AND": 2,
+    "XOR": 2,
+    "OR": 2,
+    "NOT": 1,
+    "BYTE": 2,
+    "SHA3": 2,
+    "BALANCE": 1,
+    "CALLDATALOAD": 1,
+    "CALLDATACOPY": 3,
+    "CODECOPY": 3,
+    "EXTCODESIZE": 1,
+    "EXTCODECOPY": 4,
+    "BLOCKHASH": 1,
+    "POP": 1,
+    "MLOAD": 1,
+    "MSTORE": 2,
+    "MSTORE8": 2,
+    "SLOAD": 1,
+    "SSTORE": 2,
+    "JUMP": 1,
+    "JUMPI": 2,
+    "LOG0": 2,
+    "LOG1": 3,
+    "LOG2": 4,
+    "LOG3": 5,
+    "LOG4": 6,
+    "CREATE": 3,
+    "CALL": 7,
+    "CALLCODE": 7,
+    "RETURN": 2,
+    "SELFDESTRUCT": 1,
+}
+OP_POP.update({f"SWAP{i}": i + 1 for i in range(1, 17)})
+OP_POP.update({f"DUP{i}": i for i in range(1, 17)})
+print(OP_POP)
