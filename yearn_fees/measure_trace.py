@@ -9,6 +9,7 @@ from dask.distributed import Client, LocalCluster
 from rich.console import Console
 from rich.progress import Progress
 from toolz import unique
+from tqdm import tqdm
 
 from yearn_fees.utils import fetch_all_reports
 
@@ -24,13 +25,18 @@ def stream_trace(tx):
     bytes_data = 0
     d = zlib.decompressobj(zlib.MAX_WBITS | 16)
     t0 = perf_counter()
+    bar_size = tqdm(desc="size", unit="B", unit_scale=True, unit_divisor=1024)
+    bar_wire = tqdm(desc="wire", unit="B", unit_scale=True, unit_divisor=1024)
 
+    # headers={'accept-encoding': ''}
     with httpx.stream("POST", "http://127.0.0.1:8545", json=payload) as r:
         assert r.headers["content-encoding"] == "gzip", "enable `--http.compression` for erigon"
         for chunk in r.iter_raw():
             bytes_raw += len(chunk)
             chunk_fat = d.decompress(chunk)
             bytes_data += len(chunk_fat)
+            bar_size.update(len(chunk_fat))
+            bar_wire.update(len(chunk))
 
     return {
         "tx": tx,

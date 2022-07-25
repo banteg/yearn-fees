@@ -113,6 +113,7 @@ def dec_hook(type: Type, obj: Any) -> Any:
 def display(vm: VMTrace, offset=0, compare=None, call_target=None):
     memory = Memory()
     stack = Stack()
+    storage = {}
 
     if call_target:
         rich.print(f"[bold red]{call_target}")
@@ -126,17 +127,17 @@ def display(vm: VMTrace, offset=0, compare=None, call_target=None):
         memory.write(offset, len(data), data)
 
     for op in vm.ops:
-        print("-" * 80)
-        rich.print(f"{hex(op.pc):>4} ({op.pc})| {op.op}")
-        rich.print(f"[yellow]stack ({len(stack.values)} values)")
+        # print("-" * 80)
+        # rich.print(f"{hex(op.pc):>4} ({op.pc})| {op.op}")
+        # rich.print(f"[yellow]stack ({len(stack.values)} values)")
         for i, (t, v) in enumerate(reversed(stack.values)):
             val = encode_single("uint256", v)
-            print(f"{hex(i)[2:]:>4}| {val.hex()}")
+            # print(f"{hex(i)[2:]:>4}| {val.hex()}")
 
-        rich.print(f"[magenta]memory ({len(memory) // 32} words)")
+        # rich.print(f"[magenta]memory ({len(memory) // 32} words)")
         for i in range(0, len(memory), 32):
             mem = memory.read_bytes(i * 32, 32).ljust(32, b"\x00")
-            print(f"{hex(i)[2:]:>4}| {mem.hex()}")
+            # print(f"{hex(i)[2:]:>4}| {mem.hex()}")
 
         # rich.print(f'VMTRACE {op}')
         if compare:
@@ -180,10 +181,16 @@ def display(vm: VMTrace, offset=0, compare=None, call_target=None):
         if op.ex.mem:
             write_memory(op.ex.mem.off, op.ex.mem.data)
 
+        if op.ex.store:
+            print(op.ex.store)
+            storage[op.ex.store.key] = op.ex.store.val
+
         # subcalls
         if op.sub:
             rich.print(f"[bold red]{op.op} has {len(op.sub.ops)} subtraces")
             display(op.sub, offset=offset + 1, compare=compare, call_target=call_target)
+
+    rich.print(storage)
 
 
 decoder = msgspec.json.Decoder(VMTrace, dec_hook=dec_hook)
