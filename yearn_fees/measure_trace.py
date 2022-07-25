@@ -10,10 +10,15 @@ from rich.console import Console
 from rich.progress import Progress
 from toolz import unique
 from tqdm import tqdm
+from ape import chain, networks
 
+from typer import Typer
 from yearn_fees.utils import fetch_all_reports
 
+app = Typer()
 
+
+@app.command("measure")
 def stream_trace(tx):
     """
     Measures both compressed and uncompressed trace response size.
@@ -21,31 +26,33 @@ def stream_trace(tx):
     Use to debug https://github.com/ledgerwatch/erigon/issues/4637
     """
     payload = {"jsonrpc": "2.0", "id": 1, "method": "debug_traceTransaction", "params": [tx]}
-    bytes_raw = 0
-    bytes_data = 0
-    d = zlib.decompressobj(zlib.MAX_WBITS | 16)
+    headers = {"accept-encoding": ""}
+    bytes_wire = 0
+    frames = 0
     t0 = perf_counter()
-    bar_size = tqdm(desc="size", unit="B", unit_scale=True, unit_divisor=1024)
     bar_wire = tqdm(desc="wire", unit="B", unit_scale=True, unit_divisor=1024)
+    bar_frames = tqdm(desc="frames", unit="frames")
 
-    # headers={'accept-encoding': ''}
-    with httpx.stream("POST", "http://127.0.0.1:8545", json=payload) as r:
-        assert r.headers["content-encoding"] == "gzip", "enable `--http.compression` for erigon"
+    with httpx.stream("POST", "http://127.0.0.1:8545", json=payload, headers=headers) as r:
         for chunk in r.iter_raw():
-            bytes_raw += len(chunk)
-            chunk_fat = d.decompress(chunk)
-            bytes_data += len(chunk_fat)
-            bar_size.update(len(chunk_fat))
-            bar_wire.update(len(chunk))
+            new_bytes = len(chunk)
+            bytes_wire += new_bytes
+            new_frames = chunk.count(b'{"pc":')
+            frames += new_frames
+            bar_wire.update(new_bytes)
+            bar_frames.update(new_frames)
 
-    return {
+    res = {
         "tx": tx,
-        "bytes_raw": bytes_raw,
-        "bytes_data": bytes_data,
+        "bytes_wire": bytes_wire,
+        "frames": frames,
         "elapsed": perf_counter() - t0,
     }
+    print(res)
+    return res
 
 
+@app.command("dropped")
 def measure_dropped():
     with networks.parse_network_choice(":mainnet:geth"):
         reports = fetch_all_reports()
@@ -65,7 +72,7 @@ def measure_dropped():
         task = progress.add_task("measure", total=len(txs))
         for tx, fut in zip(txs, client.map(stream_trace, txs)):
             res = fut.result()
-            res['block_number'] = blocks[tx]
+            res["block_number"] = blocks[tx]
             f.write(json.dumps(res) + "\n")
             f.flush()
             progress.update(task, advance=1)
@@ -75,8 +82,5 @@ def measure_dropped():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        res = stream_trace(sys.argv[1])
-        print(res)
-    else:
-        measure_dropped()
+    with networks.ethereum.mainnet.use_default_provider():
+        app()
